@@ -23,7 +23,7 @@ TABLE_XPATH = '//*[@id="innerContent"]/div[2]/div[5]/table'
 
 # ─── DETERMINE LAST FULL YEAR ──────────────────────────────────────────────
 today = date.today()
-# today = date(2025, 1, 2)
+# today = date(2010, 1, 29)
 LAST_FULL_YEAR = today.year - 1
 END_YEAR = today.year  # includes the current year
 
@@ -60,7 +60,7 @@ for year in range(START_YEAR, END_YEAR + 1):
                 continue   # next course
 
             # start scraping
-            for race_no in range(1, 13):
+            for race_no in range(1, 15):
                 url = (
                   "https://racing.hkjc.com/racing/information/English/Racing/LocalResults.aspx"
                   f"?RaceDate={ds}&Racecourse={course}&RaceNo={race_no}"
@@ -108,16 +108,16 @@ for year in range(START_YEAR, END_YEAR + 1):
                             if "Course :" in text:
                                 meta_dict["Course Detail"] = meta_texts[i+1].strip()
                             if text == "Time :":
-                                times = [t.strip("()") for t in meta_texts[i+1:i+6] if t.startswith("(")]
+                                times = [t.strip("()") for t in meta_texts[i+1:i+7] if t.startswith("(")]
                                 for idx, val in enumerate(times, start=1):
                                     meta_dict[f"Time {idx}"] = val
-                                for idx in range(len(times)+1, 6):
+                                for idx in range(len(times)+1, 7):
                                     meta_dict[f"Time {idx}"] = float("nan")
                             if "Sectional Time" in text:
-                                sects = [meta_texts[i+j].strip() for j in range(1, 6) if i+j < len(meta_texts) and meta_texts[i+j].strip()]
+                                sects = [meta_texts[i+j].strip() for j in range(1, 7) if i+j < len(meta_texts) and meta_texts[i+j].strip()]
                                 for idx, val in enumerate(sects, start=1):
                                     meta_dict[f"Sectional Time {idx}"] = val.split()[0]
-                                for idx in range(len(sects)+1, 6):
+                                for idx in range(len(sects)+1, 7):
                                     meta_dict[f"Sectional Time {idx}"] = float("nan")
                         for key, val in meta_dict.items():
                             df[key] = val

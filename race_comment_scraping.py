@@ -173,7 +173,7 @@ def main():
     unique_dates = extract_unique_dates()
 
     # Scrape comments by year (example: scrape only 2025, can change as needed)
-    # Commented out scraping here as files are expected in "Comments by year" folder for combine step
+    # Comment out as scraped files are stored in "Comments by year" folder for combine step
     # year_dfs = scrape_comments_by_years(unique_dates, years=[2025])
     # for year, df_year in year_dfs.items():
     #     out_fn = f"Comments by year/comments_{year}.csv"
