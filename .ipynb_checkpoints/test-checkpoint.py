@@ -1,6 +1,4 @@
 # %% 
-import os
-import re
 from datetime import date, timedelta
 from io import StringIO
 
@@ -23,7 +21,7 @@ TABLE_XPATH = '//*[@id="innerContent"]/div[2]/div[5]/table'
 
 # ─── DETERMINE LAST FULL YEAR ──────────────────────────────────────────────
 today = date.today()
-# today = date(2025, 1, 2)
+today = date(2025, 1, 2)
 LAST_FULL_YEAR = today.year - 1
 END_YEAR = today.year  # includes the current year
 
@@ -59,8 +57,21 @@ for year in range(START_YEAR, END_YEAR + 1):
                 print(f"    – no Race#1 → skipping {course} on {ds}")
                 continue   # next course
 
-            # start scraping
-            for race_no in range(1, 13):
+            # scrape Race#1
+            html1 = tbl1.get_attribute("outerHTML")
+            tables = pd.read_html(StringIO(html1))
+            if not tables:
+                print(f"    – Race#1 empty → skipping {course} on {ds}")
+                continue
+            df = tables[0]
+            df["Date"]       = ds
+            df["Course"]     = course
+            df["RaceNumber"] = 1
+            df_year = df if df_year is None else pd.concat([df_year, df], ignore_index=True)
+            print(f"    ✔ Race#1: {len(df)} rows")
+
+            # scrape Race#2…Race#12 until one is missing
+            for race_no in range(2, 13):
                 url = (
                   "https://racing.hkjc.com/racing/information/English/Racing/LocalResults.aspx"
                   f"?RaceDate={ds}&Racecourse={course}&RaceNo={race_no}"
@@ -84,45 +95,6 @@ for year in range(START_YEAR, END_YEAR + 1):
                 df["Date"]       = ds
                 df["Course"]     = course
                 df["RaceNumber"] = race_no
-                try:
-                    extra_tbl = driver.find_element(By.CSS_SELECTOR, "div.race_tab table")
-                    extra_html = extra_tbl.get_attribute("outerHTML")
-                    extra_tables = pd.read_html(StringIO(extra_html))
-                    if extra_tables:
-                        meta_df = extra_tables[0]
-                        meta_texts = meta_df.astype(str).values.flatten()
-                        meta_dict = {}
-
-                        for i, text in enumerate(meta_texts):
-                            if "Class" in text and "-" in text:
-                                parts = text.split(" - ")
-                                meta_dict["Race type"]= parts[0]
-                                meta_dict["Distance"] = parts[1].split()[0].strip()
-                                meta_dict["Score range"] = parts[2].strip("()") if parts[2] else ""
-                            if "Group" in text and "-" in text:
-                                parts = text.split(" - ")
-                                meta_dict["Race type"]= parts[0]
-                                meta_dict["Distance"] = parts[1]
-                            if "Going :" in text:
-                                meta_dict["Going"] = meta_texts[i+1].strip()
-                            if "Course :" in text:
-                                meta_dict["Course Detail"] = meta_texts[i+1].strip()
-                            if text == "Time :":
-                                times = [t.strip("()") for t in meta_texts[i+1:i+6] if t.startswith("(")]
-                                for idx, val in enumerate(times, start=1):
-                                    meta_dict[f"Time {idx}"] = val
-                                for idx in range(len(times)+1, 6):
-                                    meta_dict[f"Time {idx}"] = float("nan")
-                            if "Sectional Time" in text:
-                                sects = [meta_texts[i+j].strip() for j in range(1, 6) if i+j < len(meta_texts) and meta_texts[i+j].strip()]
-                                for idx, val in enumerate(sects, start=1):
-                                    meta_dict[f"Sectional Time {idx}"] = val.split()[0]
-                                for idx in range(len(sects)+1, 6):
-                                    meta_dict[f"Sectional Time {idx}"] = float("nan")
-                        for key, val in meta_dict.items():
-                            df[key] = val
-                except:
-                    print("    – metadata extraction failed → continuing")
                 df_year = df if df_year is None else pd.concat([df_year, df], ignore_index=True)
                 print(f"    ✔ Race#{race_no}: {len(df)} rows")
         # Stop scraping if today is reached
@@ -135,10 +107,8 @@ for year in range(START_YEAR, END_YEAR + 1):
 
     # after finishing the year, write it out
     if df_year is not None:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
         out_fn = f"RacePlaceData_{year}.csv"
-        out_path = os.path.join(script_dir, out_fn)
-        df_year.to_csv(out_path, index=False)
+        df_year.to_csv(out_fn, index=False)
         print(f"\n Year {year} complete: saved {len(df_year)} rows → {out_fn}")
     else:
         print(f"\n Year {year} yielded no data, skipping file.")
