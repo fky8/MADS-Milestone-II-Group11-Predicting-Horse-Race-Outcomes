@@ -10,7 +10,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────
-START_YEAR = 2025
+START_YEAR = 2010
 
 # Selenium:
 chrome_opts = Options()
