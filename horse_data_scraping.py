@@ -5,12 +5,12 @@ from urllib.parse import urljoin
 import pandas as pd
 import re
 
-INDEX_CSV    = "hkjc_horses_A_to_Z.csv"
+INDEX_CSV    = "hkjc_horses_index.csv"
 OUTPUT_CSV   = "hkjc_horse_profiles.csv"
 BASE_DOMAIN  = "https://racing.hkjc.com"
 
 
-def scrape_all_horses(output_csv="hkjc_horses_A_to_Z.csv"):
+def scrape_all_horses(output_csv="hkjc_horses_index.csv"):
     """
     Scrape the HKJC 'SelectHorsebyChar' index pages for letters A–Z.
     Returns a DataFrame with: Letter, HorseName, Rating, URL.
