@@ -12,7 +12,7 @@ from selenium.webdriver.chrome.options import Options
 # ─── CONFIG ────────────────────────────────────────────────────────────────
 START_YEAR = 2025
 
-# Selenium: headless Chrome (change path if needed)
+# Selenium:
 chrome_opts = Options()
 chrome_opts.add_argument("--headless")
 chrome_opts.add_argument("--disable-gpu")
@@ -133,7 +133,7 @@ for year in range(START_YEAR, END_YEAR + 1):
         # next day
         day_cursor += one_day
 
-    # after finishing the year, write it out
+    # after finishing the year, write out
     if df_year is not None:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         out_fn = f"RacePlaceData_{year}.csv"

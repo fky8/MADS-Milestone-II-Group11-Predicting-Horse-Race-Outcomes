@@ -1,7 +1,14 @@
+import os
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import pandas as pd
+import re
+
+INDEX_CSV    = "hkjc_horses_A_to_Z.csv"
+OUTPUT_CSV   = "hkjc_horse_profiles.csv"
+BASE_DOMAIN  = "https://racing.hkjc.com"
+
 
 def scrape_all_horses(output_csv="hkjc_horses_A_to_Z.csv"):
     """
@@ -62,17 +69,6 @@ def scrape_all_horses(output_csv="hkjc_horses_A_to_Z.csv"):
     df = pd.DataFrame(records, columns=["Letter","HorseName","Rating","URL"])
     print(f"\nDone — total {len(df)} horses scraped")
     return df
-
-
-import re
-import requests
-from bs4 import BeautifulSoup
-import pandas as pd
-from urllib.parse import urljoin
-
-INDEX_CSV    = "hkjc_horses_A_to_Z.csv"
-OUTPUT_CSV   = "hkjc_horse_profiles.csv"
-BASE_DOMAIN  = "https://racing.hkjc.com"
 
 
 def parse_horse_profile(url: str, session: requests.Session) -> dict:
@@ -170,7 +166,9 @@ def main(df_idx):
     # Build DataFrame & save CSV
     df = pd.DataFrame(all_records)
     df.to_csv(OUTPUT_CSV, index=False)
+    abs_path = os.path.abspath(OUTPUT_CSV)
     print(f"\nSaved {len(df)} horse profiles to {OUTPUT_CSV}")
+    print(f"Full file path: {abs_path}")
 
 if __name__ == "__main__":
     df = scrape_all_horses()
