@@ -159,7 +159,7 @@ df_list = []
 for fn in files:
     df = pd.read_csv(fn, dtype=str)   # <-- everything as text
     # Keep only the first 15 columns
-    df = df.iloc[:, :15]
+    df = df.iloc[:, :32]
     df_list.append(df)
 
 # 3) Concatenate them end-to-end
