@@ -174,12 +174,12 @@ def main():
 
     # Scrape comments by year (example: scrape only 2025, can change as needed)
     # Comment out as scraped files are stored in "Comments by year" folder for combine step
-    # year_dfs = scrape_comments_by_years(unique_dates, years=[2025])
-    # for year, df_year in year_dfs.items():
-    #     out_fn = f"Comments by year/comments_{year}.csv"
-    #     os.makedirs(os.path.dirname(out_fn), exist_ok=True)
-    #     df_year.to_csv(out_fn, index=False)
-    #     print(f"✅ Saved {len(df_year)} rows to {out_fn}")
+    year_dfs = scrape_comments_by_years(unique_dates, years=[i for i in range (2010,2026)])
+    for year, df_year in year_dfs.items():
+        out_fn = f"Comments by year/comments_{year}.csv"
+        os.makedirs(os.path.dirname(out_fn), exist_ok=True)
+        df_year.to_csv(out_fn, index=False)
+        print(f"✅ Saved {len(df_year)} rows to {out_fn}")
 
     # Combine and clean comments
     combined_file = "comments_2010_to_2025_combined.csv"
