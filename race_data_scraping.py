@@ -146,3 +146,28 @@ for year in range(START_YEAR, END_YEAR + 1):
 # cleanup
 driver.quit()
 print("\nAll done!")
+
+# %%
+import glob
+import pandas as pd
+
+# 1) Grab all files matching name pattern
+files = glob.glob("RacePlaceData_*.csv")
+
+# 2) Read each into a DataFrame
+df_list = []
+for fn in files:
+    df = pd.read_csv(fn, dtype=str)   # <-- everything as text
+    # Keep only the first 15 columns
+    df = df.iloc[:, :15]
+    df_list.append(df)
+
+# 3) Concatenate them end-to-end
+all_races = pd.concat(df_list, ignore_index=True)
+
+# 4) (Optional) drop exact duplicates, if any
+all_races = all_races.drop_duplicates()
+
+# 5) Save out
+all_races.to_csv("RacePlaceData_ALL_YEARS.csv", index=False)
+print(f"Done — aggregated {len(files)} files into {len(all_races)} rows")
