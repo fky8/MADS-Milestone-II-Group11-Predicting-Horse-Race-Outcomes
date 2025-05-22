@@ -161,12 +161,12 @@ def clean_comments_file(file):
     df.to_csv(file, index=False)
     print(f"✅ Cleaned and saved in-place to {file}. Remaining rows: {len(df)}.")
 
-def expand_gear_columns(input_file="comments_2010_to_2025_combined.csv", output_file="comments_2010_to_2025_expanded.csv"):
+def expand_gear_columns(input_file="comments_2010_to_2025_combined.csv"):
     df = pd.read_csv(input_file)
     expanded = df["Gear"].apply(expand_gear).apply(pd.Series)
     df_expanded = pd.concat([df, expanded], axis=1)
-    df_expanded.to_csv(output_file, index=False)
-    print(f"Done! New file is {output_file}")
+    df_expanded.to_csv(input_file, index=False)
+    print(f"✅ Expanded gear columns and saved in-place to {input_file}")
 
 def main():
     # Extract unique dates from master CSV
