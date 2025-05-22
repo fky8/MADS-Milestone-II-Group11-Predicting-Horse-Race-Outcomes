@@ -94,6 +94,7 @@ for year in range(START_YEAR, END_YEAR + 1):
                         meta_dict = {}
 
                         for i, text in enumerate(meta_texts):
+                            # if ... match <td style="width: 385px;">4 Year Olds - 1600M </td>
                             if "Class" in text and "-" in text:
                                 parts = text.split(" - ")
                                 meta_dict["Race type"]= parts[0]
@@ -148,26 +149,35 @@ driver.quit()
 print("\nAll done!")
 
 # %%
-import glob
 import pandas as pd
+script_dir = os.path.dirname(os.path.abspath(__file__))
 
-# 1) Grab all files matching name pattern
-files = glob.glob("RacePlaceData_*.csv")
+combined_dfs = []
+total_rows = 0
+start_year = 2010
+end_year = 2025
 
-# 2) Read each into a DataFrame
-df_list = []
-for fn in files:
-    df = pd.read_csv(fn, dtype=str)   # <-- everything as text
-    # Keep only the first 15 columns
-    df = df.iloc[:, :32]
-    df_list.append(df)
+for year in range(start_year, end_year + 1):
+    file_path = os.path.join(script_dir, f"RacePlaceData_{year}.csv")
+    if os.path.exists(file_path):
+        df_year = pd.read_csv(file_path)
+        row_count = len(df_year)
+        print(f"Loaded {file_path} with {row_count} rows")
+        combined_dfs.append(df_year)
+        total_rows += row_count
+    else:
+        print(f"File {file_path} does not exist, skipping.")
 
-# 3) Concatenate them end-to-end
-all_races = pd.concat(df_list, ignore_index=True)
+if combined_dfs:
+    df_combined = pd.concat(combined_dfs, ignore_index=True)
+    combined_file = os.path.join(script_dir, f"RacePlaceData_{start_year}_{end_year}.csv")
+    df_combined.to_csv(combined_file, index=False)
+    print(f"\nCombined data saved to {combined_file} with {len(df_combined)} rows")
+    if len(df_combined) == total_rows:
+        print("Row count matches sum of individual files.")
+    else:
+        print("Warning: Row count does not match sum of individual files!")
+else:
+    print("No data files found to combine.")
 
-# 4) (Optional) drop exact duplicates, if any
-all_races = all_races.drop_duplicates()
-
-# 5) Save out
-all_races.to_csv("RacePlaceData_ALL_YEARS.csv", index=False)
-print(f"Done — aggregated {len(files)} files into {len(all_races)} rows")
+# %%

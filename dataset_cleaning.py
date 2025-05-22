@@ -2,7 +2,7 @@
 import pandas as pd
 
 # %%
-race_df = pd.read_csv("RacePlaceData_ALL_YEARS.csv")
+race_df = pd.read_csv("RacePlaceData_2010_2025.csv")
 horse_df = pd.read_csv("hkjc_horse_profiles.csv")
 gear_df = pd.read_csv("comments_2010_to_2025_combined.csv")
 # Remove any unnamed columns that came from CSV export
@@ -38,12 +38,15 @@ gear_df['Horse No.'] = gear_df['Horse No.'].astype('Int64')
 gear_df['Date_str'] = gear_df['Date'].astype(str)
 race_df['Date_str'] = race_df['Date'].astype(str)
 
+# Replace problematic date strings with pd.NA
+race_df['Date_str'] = race_df['Date_str'].replace(['nan', 'NaN', ''], pd.NA)
+gear_df['Date_str'] = gear_df['Date_str'].replace(['nan', 'NaN', ''], pd.NA)
 
 
 # Parse race_df dates handling both D/M/YYYY and YYYY/MM/DD with slashes
 date_series = race_df['Date_str']
 # First parse day/month/year
-race_df['Date'] = pd.to_datetime(date_series, format='%d/%m/%Y', errors='coerce')
+race_df['Date'] = pd.to_datetime(date_series, format='%Y/%m/%d', errors='coerce')
 # Then fill in ISO year/month/day for remaining
 mask = race_df['Date'].isna()
 race_df.loc[mask, 'Date'] = pd.to_datetime(
@@ -66,6 +69,8 @@ print(unparsable_race.drop_duplicates())
 
 
 # %%
+print(race_df['Date'].iloc[1].year)
+print(gear_df['Date'].iloc[1].day)
 # %%
 # %%
 # Combine race and gear DataFrames by coalescing on keys
@@ -100,12 +105,43 @@ race_full_df = (
     .reset_index()
 )
 print(race_full_df.columns)
-race_full_df.to_csv("Race_comments_gear_expanded.csv", index=False)
+# Print all columns and their data types for race_full_df
+print("race_full_df columns and dtypes:")
+print(race_full_df.dtypes)
 
-# %%
-print(race_full_df.head(20))
-# %%
-pd.set_option('display.max_rows', None, 'display.max_columns', None)
-pd.set_option('display.max_colwidth', None)
-print(race_full_df.columns)
+# Reorder columns in race_full_df: race_df columns, then horse_df columns excluding overlaps, then gear_df columns excluding overlaps
+race_cols_set = set(race_df.columns)
+horse_cols = [col for col in horse_df.columns if col not in race_cols_set and col != 'Horse']
+gear_cols_set = set(gear_df.columns)
+race_gear_cols_set = set(race_gear_df.columns)
+gear_only_cols = [col for col in gear_df.columns if col not in race_cols_set and col not in horse_cols and col != 'Horse']
+ordered_cols = list(race_df.columns) + horse_cols + gear_only_cols
+race_full_df = race_full_df[ordered_cols]
+
+# Sort race_full_df by Date, RaceNumber, and Placing
+race_full_df = race_full_df.sort_values(by=['Date', 'RaceNumber', 'Placing'])
+
+# Remove all dollar signs from string values in the DataFrame, excluding column names
+def remove_dollar_signs(val):
+    if isinstance(val, str):
+        return val.replace('$', '')
+    return val
+race_full_df = race_full_df.applymap(remove_dollar_signs)
+
+# Drop rows where 'Horse' or 'Placing' is missing
+race_full_df = race_full_df.dropna(subset=['Horse', 'Placing'])
+
+# Drop completely blank rows (all values are NaN)
+race_full_df = race_full_df.dropna(how='all')
+
+race_full_df.to_csv("Race_comments_gear_ordered.csv", index=False)
+
+# Split into two files based on date range
+mask_2010_2018 = (race_full_df['Date'] >= '2010-01-01') & (race_full_df['Date'] <= '2018-12-31')
+mask_2019_2025 = (race_full_df['Date'] >= '2019-01-01') & (race_full_df['Date'] <= '2025-12-31')
+
+race_full_df.loc[mask_2010_2018].to_csv("Race_comments_gear_ordered_2010_2018.csv", index=False)
+race_full_df.loc[mask_2019_2025].to_csv("Race_comments_gear_ordered_2019_2025.csv", index=False)
+
+
 # %%
