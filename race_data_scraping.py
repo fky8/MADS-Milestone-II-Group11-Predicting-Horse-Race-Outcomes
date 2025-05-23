@@ -106,7 +106,6 @@ for year in range(START_YEAR, END_YEAR + 1):
                             #     meta_dict["Distance"] = parts[1]
                             if re.match(r'.*\d{4,}M.*', text):
                                 parts = text.split(" - ")
-                                print (parts)
                                 meta_dict["Race type"]= parts[0]
                                 meta_dict["Distance"] = parts[1]
                                 if len(parts)>2:
