@@ -161,7 +161,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 combined_dfs = []
 total_rows = 0
 start_year = 2010
-end_year = 2025
+end_year = 2013
 
 for year in range(start_year, end_year + 1):
     file_path = os.path.join(script_dir, f"RacePlaceData_{year}.csv")
@@ -175,7 +175,14 @@ for year in range(start_year, end_year + 1):
         print(f"File {file_path} does not exist, skipping.")
 
 if combined_dfs:
+    # Concatenate dataframes
     df_combined = pd.concat(combined_dfs, ignore_index=True)
+    
+    # Clean up columns
+    df_combined = df_combined.loc[:, ~df_combined.columns.str.contains('Unnamed')]
+    df_combined = df_combined.loc[:, ~df_combined.columns.str.contains('RACE \d+')]
+    df_combined = df_combined.loc[:, ~df_combined.columns.duplicated()]
+    
     combined_file = os.path.join(script_dir, f"RacePlaceData_{start_year}_{end_year}.csv")
     df_combined.to_csv(combined_file, index=False)
     print(f"\nCombined data saved to {combined_file} with {len(df_combined)} rows")
@@ -185,5 +192,4 @@ if combined_dfs:
         print("Warning: Row count does not match sum of individual files!")
 else:
     print("No data files found to combine.")
-
 # %%
