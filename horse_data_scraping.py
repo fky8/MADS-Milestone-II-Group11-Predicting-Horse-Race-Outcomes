@@ -5,12 +5,11 @@ from urllib.parse import urljoin
 import pandas as pd
 import re
 
-INDEX_CSV    = "hkjc_horses_index.csv"
 OUTPUT_CSV   = "hkjc_horse_profiles.csv"
 BASE_DOMAIN  = "https://racing.hkjc.com"
 
 
-def scrape_all_horses(output_csv="hkjc_horses_index.csv"):
+def scrape_all_horses():
     """
     Scrape the HKJC 'SelectHorsebyChar' index pages for letters A–Z.
     Returns a DataFrame with: Letter, HorseName, Rating, URL.
@@ -141,7 +140,7 @@ def parse_horse_profile(url: str, session: requests.Session) -> dict:
     data["PP Pre-import races footage"] = 1 if pp_td else 0
 
     return data
-
+# %%
 def main(df_idx):
     session = requests.Session()
     session.headers.update({"User-Agent": "Mozilla/5.0"})
@@ -155,7 +154,6 @@ def main(df_idx):
 
         # Merge index + profile fields
         rec = {
-            "Letter":     row["Letter"],
             "HorseName":  prof.pop("HorseName", row["HorseName"]),
             "HorseIndex": prof.pop("HorseIndex", ""),
             "ProfileURL": url,
@@ -163,8 +161,13 @@ def main(df_idx):
         rec.update(prof)
         all_records.append(rec)
 
-    # Build DataFrame & save CSV
+    # Build DataFrame & drop unneeded columns as early as possible
     df = pd.DataFrame(all_records)
+    df.columns = df.columns.str.replace('*', '', regex=False)
+    print (df.columns)
+    df = df.replace(r'\$', '', regex=True)
+    # Drop unneeded columns as early as possible
+    df.drop(columns=["ProfileURL"], inplace=True)
     df.to_csv(OUTPUT_CSV, index=False)
     abs_path = os.path.abspath(OUTPUT_CSV)
     print(f"\nSaved {len(df)} horse profiles to {OUTPUT_CSV}")
@@ -173,3 +176,5 @@ def main(df_idx):
 if __name__ == "__main__":
     df = scrape_all_horses()
     main(df)
+
+# %%
