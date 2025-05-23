@@ -95,7 +95,6 @@ for year in range(START_YEAR, END_YEAR + 1):
 
                         for i, text in enumerate(meta_texts):
                             # if ... match <td style="width: 385px;">4 Year Olds - 1600M </td>
-<<<<<<< HEAD
                             # if "Class" in text and "-" in text:
                             #     parts = text.split(" - ")
                             #     meta_dict["Race type"]= parts[0]
@@ -106,14 +105,6 @@ for year in range(START_YEAR, END_YEAR + 1):
                             #     meta_dict["Race type"]= parts[0]
                             #     meta_dict["Distance"] = parts[1]
                             if re.match(r'.*\d{4,}M.*', text):
-=======
-                            if "Class" in text and "-" in text:
-                                parts = text.split(" - ")
-                                meta_dict["Race type"]= parts[0]
-                                meta_dict["Distance"] = parts[1].split()[0].strip()
-                                meta_dict["Score range"] = parts[2].strip("()") if parts[2] else ""
-                            if "Group" in text and "-" in text:
->>>>>>> origin/main
                                 parts = text.split(" - ")
                                 print (parts)
                                 meta_dict["Race type"]= parts[0]
