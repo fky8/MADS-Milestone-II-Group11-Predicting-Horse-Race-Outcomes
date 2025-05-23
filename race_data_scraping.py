@@ -23,7 +23,7 @@ TABLE_XPATH = '//*[@id="innerContent"]/div[2]/div[5]/table'
 
 # ─── DETERMINE LAST FULL YEAR ──────────────────────────────────────────────
 today = date.today()
-# today = date(2010, 1, 29)
+# today = date(2014, 3, 24)
 LAST_FULL_YEAR = today.year - 1
 END_YEAR = today.year  # includes the current year
 
@@ -95,15 +95,22 @@ for year in range(START_YEAR, END_YEAR + 1):
 
                         for i, text in enumerate(meta_texts):
                             # if ... match <td style="width: 385px;">4 Year Olds - 1600M </td>
-                            if "Class" in text and "-" in text:
+                            # if "Class" in text and "-" in text:
+                            #     parts = text.split(" - ")
+                            #     meta_dict["Race type"]= parts[0]
+                            #     meta_dict["Distance"] = parts[1].split()[0].strip()
+                            #     meta_dict["Score range"] = parts[2].strip("()") if parts[2] else ""
+                            # if "Group" in text and "-" in text:
+                            #     parts = text.split(" - ")
+                            #     meta_dict["Race type"]= parts[0]
+                            #     meta_dict["Distance"] = parts[1]
+                            if re.match(r'.*\d{4,}M.*', text):
                                 parts = text.split(" - ")
-                                meta_dict["Race type"]= parts[0]
-                                meta_dict["Distance"] = parts[1].split()[0].strip()
-                                meta_dict["Score range"] = parts[2].strip("()") if parts[2] else ""
-                            if "Group" in text and "-" in text:
-                                parts = text.split(" - ")
+                                print (parts)
                                 meta_dict["Race type"]= parts[0]
                                 meta_dict["Distance"] = parts[1]
+                                if len(parts)>2:
+                                    meta_dict["Score range"] = parts[2].strip("()")
                             if "Going :" in text:
                                 meta_dict["Going"] = meta_texts[i+1].strip()
                             if "Course :" in text:
