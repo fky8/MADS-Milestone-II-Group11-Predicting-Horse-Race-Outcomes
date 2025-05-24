@@ -83,7 +83,7 @@ def scrape_race(row):
                 meta_texts = meta_df.astype(str).values.flatten()
                 meta_dict = {}
                 for i, text in enumerate(meta_texts):
-                    if re.match(r'.*\d{4,}M.*', text):
+                    if re.match(r'.*- \d{4,}M.*', text):
                         parts = text.split(" - ")
                         meta_dict["Race type"]= parts[0]
                         meta_dict["Distance"] = parts[1]
@@ -91,6 +91,8 @@ def scrape_race(row):
                             meta_dict["Score range"] = parts[2].strip("()")
                     if "Going :" in text:
                         meta_dict["Going"] = meta_texts[i+1].strip()
+                    if "HANDICAP" in text:
+                        meta_dict["Handicap"] = 1
                     if "Course :" in text:
                         meta_dict["Course Detail"] = meta_texts[i+1].strip()
                     if text == "Time :":

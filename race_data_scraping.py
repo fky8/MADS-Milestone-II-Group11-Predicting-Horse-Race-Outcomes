@@ -11,7 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────
-START_YEAR = 2019
+START_YEAR = 2021
 
 # Selenium:
 chrome_opts = Options()
@@ -34,8 +34,8 @@ for year in range(START_YEAR, END_YEAR + 1):
     df_year = None
 
     # define 1-Jan and 31-Dec for this year
-    day_cursor = date(year, 5, 18)
-    year_end   = date(year, 5, 19)
+    day_cursor = date(year, 1, 1)
+    year_end   = date(year, 12, 31)
     one_day    = timedelta(days=1)
 
     # LOOP ALL DATES IN YEAR
