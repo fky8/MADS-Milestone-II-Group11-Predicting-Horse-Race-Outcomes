@@ -34,8 +34,8 @@ for year in range(START_YEAR, END_YEAR + 1):
     df_year = None
 
     # define 1-Jan and 31-Dec for this year
-    day_cursor = date(year, 1, 1)
-    year_end   = date(year, 12, 31)
+    day_cursor = date(year, 5, 18)
+    year_end   = date(year, 5, 19)
     one_day    = timedelta(days=1)
 
     # LOOP ALL DATES IN YEAR
@@ -105,12 +105,14 @@ for year in range(START_YEAR, END_YEAR + 1):
                             #     parts = text.split(" - ")
                             #     meta_dict["Race type"]= parts[0]
                             #     meta_dict["Distance"] = parts[1]
-                            if re.match(r'.*\d{4,}M.*', text):
+                            if re.match(r'.*- \d{4,}M.*', text):
                                 parts = text.split(" - ")
                                 meta_dict["Race type"]= parts[0]
                                 meta_dict["Distance"] = parts[1]
                                 if len(parts)>2:
                                     meta_dict["Score range"] = parts[2].strip("()")
+                            if "HANDICAP" in text:
+                                meta_dict["Handicap"] = 1
                             if "Going :" in text:
                                 meta_dict["Going"] = meta_texts[i+1].strip()
                             if "Course :" in text:
@@ -162,7 +164,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 combined_dfs = []
 total_rows = 0
 start_year = 2010
-end_year = 2016
+end_year = 2025
 
 for year in range(start_year, end_year + 1):
     file_path = os.path.join(script_dir, f"RacePlaceData_{year}.csv")
