@@ -1,5 +1,4 @@
 # %% 
-# Austin's initial commit
 import os
 import re
 from datetime import date, timedelta
@@ -48,10 +47,7 @@ for year in range(START_YEAR, END_YEAR + 1):
             print(f"  • Course: {course}")
 
             # Scraping Rule: Race 1 must exist
-            url1 = (
-              "https://racing.hkjc.com/racing/information/English/Racing/LocalResults.aspx"
-              f"?RaceDate={ds}&Racecourse={course}&RaceNo=1"
-            )
+   
             driver.get(url1)
 
             try:
