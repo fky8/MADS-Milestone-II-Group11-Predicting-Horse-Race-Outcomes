@@ -11,7 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────
-START_YEAR = 2021
+START_YEAR = 2010
 
 # Selenium:
 chrome_opts = Options()
@@ -24,7 +24,7 @@ TABLE_XPATH = '//*[@id="innerContent"]/div[2]/div[5]/table'
 
 # ─── DETERMINE LAST FULL YEAR ──────────────────────────────────────────────
 today = date.today()
-# today = date(2014, 3, 24)
+today = date(2017, 3, 24)
 LAST_FULL_YEAR = today.year - 1
 END_YEAR = today.year  # includes the current year
 
