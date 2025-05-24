@@ -145,7 +145,7 @@ race_full_df.loc[mask_2019_2025].to_csv("Race_comments_gear_ordered_2019_2025.cs
 
 
 # %%
-race_date_df = pd.read_csv("RacePlaceData_2010_2025.csv")
-race_date_df = race_date_df[['Date', 'Course', 'RaceNumber']].remove_duplicates()
+race_date_df = pd.read_csv("RacePlaceData_2010_2025.csv").drop_duplicates()
+race_date_df = race_date_df[['Date', 'Course', 'RaceNumber']]
 race_date_df.to_csv("race_date.csv", index=False)
 # %%
