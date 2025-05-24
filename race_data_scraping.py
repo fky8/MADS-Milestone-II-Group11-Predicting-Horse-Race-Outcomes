@@ -11,7 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────
-START_YEAR = 2017
+START_YEAR = 2019
 
 # Selenium:
 chrome_opts = Options()
