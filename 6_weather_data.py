@@ -48,6 +48,7 @@ df_merged['ComputedStartTime'] = pd.to_datetime(df_merged['ComputedStartTime'], 
 df_merged.to_csv("Race_date_with_computed_start_time.csv", index=False)
 print("Done")
 
+
 # # Read input files
 # df_times = pd.read_csv("Race_date_with_computed_start_time.csv", parse_dates=["Date"])
 # df_comments = pd.read_csv("Race_comments_gear_ordered.csv", low_memory=False)
