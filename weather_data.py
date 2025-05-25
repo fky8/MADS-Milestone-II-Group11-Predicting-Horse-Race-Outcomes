@@ -61,5 +61,3 @@ df_merged.to_csv("race_date.csv", index=False)
 print("Done")
 # %%
 print(df_merged.dtypes)
-
-# %%
