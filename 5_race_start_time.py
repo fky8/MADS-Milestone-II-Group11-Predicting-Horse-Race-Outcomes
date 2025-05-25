@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import time
 import concurrent.futures
-
+# %%
 def extract_info_from_html(html):
     soup = BeautifulSoup(html, 'html.parser')
     strongs = soup.find_all("strong", class_="body_text_ri")
@@ -44,10 +44,28 @@ def scrape_race_start_times(start_date, end_date):
             if result:
                 results.append(result)
     return pd.DataFrame(results)
-
+# %%
 # Run the scraper
 start_date = datetime.strptime("20100101", "%Y%m%d")
 end_date = datetime.today()
 df = scrape_race_start_times(start_date, end_date)
 df.to_csv("hkjc_race_start_times.csv", index=False)
 print("Done! Saved to hkjc_race_start_times.csv")
+
+# %%
+df = pd.read_csv("hkjc_race_start_times.csv")
+
+# Read and process the race place data, Format columns
+race_date_df = df
+race_date_df = race_date_df[["Date", "Course", "RaceNumber"]].drop_duplicates()
+race_date_df = race_date_df.dropna(subset=["RaceNumber"])
+race_date_df["RaceNumber"] = race_date_df["RaceNumber"].astype(int)
+race_date_df["Date"] = pd.to_datetime(race_date_df["Date"], format="%Y/%m/%d", errors='coerce')
+race_date_df["Date"] = race_date_df["Date"].dt.strftime("%d/%m/%Y")
+race_date_df.to_csv("race_date.csv", index=False)
+
+# Read the start times data
+df_start = pd.read_csv("hkjc_race_start_times.csv")
+df_start['RaceNumber'] = int(1)
+df_start['Date'] = pd.to_datetime(df_start['Date'], format="%d/%m/%Y", errors='coerce')
+df_start['Date'] = df_start['Date'].dt.strftime("%d/%m/%Y")
