@@ -185,6 +185,13 @@ if combined_dfs:
     df_combined = df_combined.loc[:, ~df_combined.columns.str.contains('Unnamed')]
     df_combined = df_combined.loc[:, ~df_combined.columns.str.contains('RACE \d+')]
     df_combined = df_combined.loc[:, ~df_combined.columns.duplicated()]
+    # Remove phantom MultiIndex columns
+    phantom_cols = [
+        "('Dividend', 'Pool')", "('Dividend', 'Winning Combination')",
+        "('Dividend', 'Dividend (HK$)')", "('Date', '')",
+        "('Course', '')", "('RaceNumber', '')"
+    ]
+    df_combined = df_combined.drop(columns=[col for col in df_combined.columns if str(col) in phantom_cols], errors='ignore')
     
     combined_file = os.path.join(script_dir, f"RacePlaceData_{start_year}_{end_year}.csv")
     df_combined.to_csv(combined_file, index=False)
