@@ -59,7 +59,7 @@ def expand_gear(s: str) -> dict:
 
     return out
 
-def extract_unique_dates(master_csv="RacePlaceData_ALL_YEARS.csv"):
+def extract_unique_dates(master_csv="race_date.csv"):
     """
     Reads master CSV, parses Date column as day-first, and returns sorted unique dates as list of Timestamps.
     """
@@ -174,7 +174,7 @@ def main():
 
     # Scrape comments by year (example: scrape only 2025, can change as needed)
     # Comment out as scraped files are stored in "Comments by year" folder for combine step
-    year_dfs = scrape_comments_by_years(unique_dates, years=[i for i in range (2010,2026)])
+    year_dfs = scrape_comments_by_years(unique_dates, years=[i for i in range (2025,2026)])
     for year, df_year in year_dfs.items():
         out_fn = f"Comments by year/comments_{year}.csv"
         os.makedirs(os.path.dirname(out_fn), exist_ok=True)

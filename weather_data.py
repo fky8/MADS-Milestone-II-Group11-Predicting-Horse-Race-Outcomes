@@ -30,8 +30,6 @@ df_merged = pd.merge(
 # Propagate TotalRaceNumber from RaceNumber == 1 to all rows on same Date
 df_merged['TotalRaceNumber'] = df_merged.groupby('Date')['TotalRaceNumber'].transform('first')
 
-# Drop duplicate join columns if desired
-# df_merged = df_merged.drop(columns=['date', 'race'])
 
 
 # After propagating TotalRaceNumber, compute ComputedStartTime for each race on a given date
@@ -57,7 +55,28 @@ df_merged['Date'] = pd.to_datetime(df_merged['Date'], format="%d/%m/%Y")
 df_merged['ComputedStartTime'] = pd.to_datetime(df_merged['ComputedStartTime'], format="%H:%M").dt.time
 
 # Save the final DataFrame to CSV
-df_merged.to_csv("race_date.csv", index=False)
+df_merged.to_csv("Race_date_with_computed_start_time.csv", index=False)
 print("Done")
+
+# Read input files
+df_times = pd.read_csv("Race_date_with_computed_start_time.csv", parse_dates=["Date"])
+df_comments = pd.read_csv("Race_comments_gear_ordered.csv", low_memory=False)
+
+# Ensure dtypes match for merge keys
+df_times["RaceNumber"] = df_times["RaceNumber"].astype(int)
+df_comments["Date"] = pd.to_datetime(df_comments["Date"], format="%Y/%m/%d", errors='coerce')
+df_comments["RaceNumber"] = df_comments["RaceNumber"].astype(int)
+
+# Merge computed start time
+df_comments = df_comments.merge(
+    df_times,
+    on=["Date", "RaceNumber"],
+    how="left"
+)
+
+# Save result
+df_comments.to_csv("Race_comments_gear_ordered_with_start_time.csv", index=False)
 # %%
-print(df_merged.dtypes)
+print (df_times[["Date","RaceNumber"]].dtypes)
+print (df_comments[["Date","RaceNumber"]].dtypes)
+# %%
