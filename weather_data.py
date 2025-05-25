@@ -44,14 +44,19 @@ df_merged["StartDateTime"] = pd.to_datetime(df_merged["Date"] + " " + df_merged[
 first_race_times = df_merged[df_merged["RaceNumber"] == 1][["Date", "StartDateTime"]].dropna()
 df_merged = pd.merge(df_merged, first_race_times, on="Date", suffixes=("", "_first"))
 
-# Compute start time for each race by adding (RaceNumber - 1) * 30 minutes
-df_merged["ComputedStartTime"] = df_merged["StartDateTime_first"] + pd.to_timedelta((df_merged["RaceNumber"] - 1) * 30, unit='m')
+# Compute start time for each race by adding (RaceNumber - 1) * 35 minutes
+df_merged["ComputedStartTime"] = df_merged["StartDateTime_first"] + pd.to_timedelta((df_merged["RaceNumber"] - 1) * 35, unit='m')
 
 # Format ComputedStartTime as HH:MM
 df_merged["ComputedStartTime"] = df_merged["ComputedStartTime"].dt.strftime("%H:%M")
 df_merged=df_merged[['Date', 'Course', 'RaceNumber','ComputedStartTime']]
 
+# Format column dtype
+df_merged = df_merged.astype({'Course': str, 'RaceNumber': int})
+df_merged['Date'] = pd.to_datetime(df_merged['Date'], format="%d/%m/%Y")
+df_merged['ComputedStartTime'] = pd.to_datetime(df_merged['ComputedStartTime'], format="%H:%M").dt.time
 
+# Save the final DataFrame to CSV
 df_merged.to_csv("race_date.csv", index=False)
 print("Done")
 # %%
