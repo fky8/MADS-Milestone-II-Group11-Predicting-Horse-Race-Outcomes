@@ -10,6 +10,8 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from io import StringIO
+import re
+
 
 OUTPUT_CSV   = "hkjc_horse_profiles.csv"
 BASE_DOMAIN  = "https://racing.hkjc.com"
@@ -96,7 +98,6 @@ def scrape_all_jockeys():
                 html = tbl.get_attribute("outerHTML")
                 tbls = pd.read_html(StringIO(html))
                 
-                # print(url)
                 df = tbls[0]
                 df['jockey_id'] = jockey
                 df['season'] = season
@@ -111,7 +112,6 @@ def scrape_all_jockeys():
                     df_list.append(df)
                     min_race_index = min_race_index_next 
                     # print(f"    JockeyId{jockey} page {page_index} min_race_index {min_race_index}")     
-
 
                 page_index += 1
 
@@ -133,113 +133,80 @@ def scrape_all_jockeys():
     # return df
 
 
-def parse_horse_profile(url: str, session: requests.Session) -> dict:
-    """
-    Fetch a horse page and return a dict of profile fields,
-    including HorseName, HorseIndex, Country, Age, Colour, Sex, etc.
-    """
-    r = session.get(url)
-    r.raise_for_status()
-    soup = BeautifulSoup(r.text, "html.parser")
-    data = {}
 
-    # 1) Profile title → HorseName + HorseIndex using Regex
-    title_span = soup.find("span", class_="title_text")
-    if title_span:
-        text = title_span.get_text(strip=True)
-        m = re.match(r"^(.*?)\s*\(([^)]+)\)$", text)
-        if m:
-            data["HorseName"]  = m.group(1).strip()
-            data["HorseIndex"] = m.group(2).strip()
+def clean_jockey_data():
+    """
+    Clean the jockey data DataFrame by removing unnecessary columns
+    and renaming columns for consistency.
+    """
+
+    df = pd.read_csv('./data/jockey_race_data.csv')
+    
+    df['race_description'] = df['Race Index'].apply(lambda x: x if '/' in x else None)
+    df['Race Index'] = df['Race Index'].apply(lambda x: None if '/' in x else x)
+    
+    # print(df['race_description'])
+
+
+    race_description = df['race_description'].to_list()
+
+    # for 
+    race_desc_list = []
+    race_sub_index = []
+    j = 0
+    for i, val in df['race_description'].items():
+        j += 1
+        if pd.isna(val):
+            race_desc_list.append(current_race_description)
+            race_sub_index.append(j)
         else:
-            data["HorseName"]  = text
-            data["HorseIndex"] = ""
-    else:
-        data["HorseName"]  = ""
-        data["HorseIndex"] = ""
+            current_race_description = val
+            race_desc_list.append(current_race_description)
+            race_sub_index.append(j)
+            j = 0
+    
+    df['Race Sub Index'] = race_sub_index
+    df['race_description'] = pd.Series(race_desc_list) 
+    df = df[df['Race Index'].notna()]
+    df['race_date'] = df['race_description'].apply(lambda x: pd.to_datetime(x[0:10], format='%d/%m/%Y', errors='coerce'))
+    df['race_course'] = df['race_description'].apply(lambda x: 'Happy Valley Jockey Challenge' if 'Happy Valley Jockey Challenge' in x else 'Sha Tin Jockey Jockey Challenge')
+    df['race_wins'] = df['race_description'].apply(lambda x: x[x.index('('):x.index(')')] if '(' in x and ')' in x else None)
+    df[['first_place','first_place_win', 'second_place', 'second_place_win', 'third_place', 'third_place_win']] = df['race_wins'].str.split(' ', expand=True)
+    df.drop(['first_place', 'second_place', 'third_place'], axis=1, inplace=True)
 
-    # 2) Left table (260px) → Country/Age, Colour/Sex, etc.
-    left_table = soup.select_one('td[style*="width: 260px"] table.table_eng_text')
-    if left_table:
-        for tr in left_table.find_all("tr"):
-            tds = tr.find_all("td")
-            if len(tds) < 3:
-                continue
-            field = tds[0].get_text(" ", strip=True)
-            value = tds[2].get_text(" ", strip=True)
+    df['first_place_win'] = df.apply(lambda x: int(x['first_place_win'].replace('*', '')) if x['first_place_win'] is not None else 0  if x['Race Sub Index'] == 1 else 0, axis=1) 
+    df['second_place_win'] = df.apply(lambda x: int(x['second_place_win'].replace('*', '')) if x['second_place_win'] is not None else 0 if x['Race Sub Index'] == 1 else 0, axis=1 )
+    df['third_place_win'] = df.apply(lambda x: int(x['third_place_win'].replace('*', '')) if x['third_place_win'] is not None else 0 if x['Race Sub Index'] == 1 else 0, axis=1 )
+    
+    # df_group = df[['race_date', 'jockey_id', 'season', 'first_place_win', 'second_place_win', 'third_place_win']].groupby(['race_date', 'jockey_id', 'season'], sort=True).agg({
+    #     'first_place_win': 'sum', 'second_place_win': 'sum', 'third_place_win': 'sum'        
+    # }).reset_index()
+    # print(df_group.tail(10))
 
-            if field == "Country of Origin / Age" and "/" in value:
-                country, age = value.split("/", 1)
-                data["Country"] = country.strip()
-                data["Age"]     = age.strip()
-            elif field == "Colour / Sex" and "/" in value:
-                colour, sex = value.split("/", 1)
-                data["Colour"] = colour.strip()
-                data["Sex"]    = sex.strip()
-            else:
-                data[field] = value
 
-    # 3) Right table (280px) → Trainer, Owner, Rating, Sire, Dam, Dam's Sire, Same Sire
-    right_table = soup.select_one('table.table_eng_text[style*="width: 280px"]')
-    if right_table:
-        for tr in right_table.find_all("tr"):
-            tds = tr.find_all("td")
-            if len(tds) < 3:
-                continue
-            field = tds[0].get_text(" ", strip=True)
+    new = df[['race_date', 'jockey_id', 'season', 'first_place_win', 'second_place_win', 'third_place_win']].groupby(['race_date', 'jockey_id', 'season']).apply(lambda x: x.iloc[::-1].cumsum()).reset_index()
+    print(new[new['jockey_id']=='PZ'].tail(10))
 
-            if field == "Same Sire":
-                sel = tds[2].find("select")
-                opts = [opt.get_text(strip=True) for opt in sel.find_all("option")] if sel else []
-                data[field] = "|".join(opts)
-            else:
-                a = tds[2].find("a")
-                val = a.get_text(" ", strip=True) if a else tds[2].get_text(" ", strip=True)
-                data[field] = val
+    # df['cumulative_second_place_win'] =  df.groupby(['jockey_id', 'season'])['second_place_win'].apply(lambda x: x.iloc[::-1].cumsum().iloc[::-1])
+    # df['cumulative_second_place_win'] =  df.groupby(['jockey_id', 'season'])['second_place_win'].apply(lambda x: x.iloc[::-1].cumsum().iloc[::-1])
+    # df['cumulative_third_place_win'] =  df.groupby(['jockey_id', 'season'])['third_place_win'].apply(lambda x: x.iloc[::-1].cumsum().iloc[::-1])     
 
-    # 4) Check for “PP Pre-import races footage”
-    #    if any <td> exactly matches that text, flag = 1 (exist), else 0
-    pp_td = soup.find("td", string=re.compile(r"^\s*PP Pre-import races footage\s*$", re.I))
-    data["PP Pre-import races footage"] = 1 if pp_td else 0
 
-    return data
-# %%
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(script_dir, f"data/jockey_race_data_clean.csv")
+    df.to_csv(file_path, index=False)
+
+
+    return df
+
 def main(df_idx):
-    session = requests.Session()
-    session.headers.update({"User-Agent": "Mozilla/5.0"})
-
-    all_records = []
-    for _, row in df_idx.iterrows():
-        url  = row["URL"]
-        print(f"Fetching profile for {row['HorseName']} …", end=" ")
-        prof = parse_horse_profile(url, session)
-        print("done")
-
-        # Merge index + profile fields
-        rec = {
-            "HorseName":  prof.pop("HorseName", row["HorseName"]),
-            "HorseIndex": prof.pop("HorseIndex", ""),
-            "ProfileURL": url,
-        }
-        rec.update(prof)
-        all_records.append(rec)
-
-    # Build DataFrame & drop unneeded columns as early as possible
-    df = pd.DataFrame(all_records)
-    df.columns = df.columns.str.replace('*', '', regex=False)
-    print (df.columns)
-    df = df.replace(r'\$', '', regex=True)
-    # Drop unneeded columns as early as possible
-    df.drop(columns=["ProfileURL"], inplace=True)
-    df.to_csv(OUTPUT_CSV, index=False)
-    abs_path = os.path.abspath(OUTPUT_CSV)
-    print(f"\nSaved {len(df)} horse profiles to {OUTPUT_CSV}")
-    print(f"Full file path: {abs_path}")
+    print('main')
 
 if __name__ == "__main__":
     # df = scrape_all_horses()
     # main(df)
-    scrape_all_jockeys()
+    # scrape_all_jockeys()
+    clean_jockey_data()
 
 
 # %%

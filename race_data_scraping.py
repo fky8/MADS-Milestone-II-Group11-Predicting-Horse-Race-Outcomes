@@ -10,7 +10,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────
-START_YEAR = 2016
+START_YEAR = 2010
 
 # Selenium:
 chrome_opts = Options()
@@ -23,7 +23,7 @@ TABLE_XPATH = '//*[@id="innerContent"]/div[2]/div[5]/table'
 
 # ─── DETERMINE LAST FULL YEAR ──────────────────────────────────────────────
 today = date.today()
-# today = date(2014, 3, 24)
+today = date(2017, 3, 24)
 LAST_FULL_YEAR = today.year - 1
 END_YEAR = today.year  # includes the current year
 
@@ -92,14 +92,6 @@ for year in range(START_YEAR, END_YEAR + 1):
 
                         for i, text in enumerate(meta_texts):
                             # if ... match <td style="width: 385px;">4 Year Olds - 1600M </td>
-<<<<<<< HEAD
-                            if "Class" in text and "-" in text:
-                                parts = text.split(" - ")
-                                meta_dict["Race type"]= parts[0]
-                                meta_dict["Distance"] = parts[1].split()[0].strip()
-                                meta_dict["Score range"] = parts[2].strip("()") if parts[2] else ""
-                            if "Group" in text and "-" in text:
-=======
                             # if "Class" in text and "-" in text:
                             #     parts = text.split(" - ")
                             #     meta_dict["Race type"]= parts[0]
@@ -109,13 +101,14 @@ for year in range(START_YEAR, END_YEAR + 1):
                             #     parts = text.split(" - ")
                             #     meta_dict["Race type"]= parts[0]
                             #     meta_dict["Distance"] = parts[1]
-                            if re.match(r'.*\d{4,}M.*', text):
->>>>>>> origin/main
+                            if re.match(r'.*- \d{4,}M.*', text):
                                 parts = text.split(" - ")
                                 meta_dict["Race type"]= parts[0]
                                 meta_dict["Distance"] = parts[1]
                                 if len(parts)>2:
                                     meta_dict["Score range"] = parts[2].strip("()")
+                            if "HANDICAP" in text:
+                                meta_dict["Handicap"] = 1
                             if "Going :" in text:
                                 meta_dict["Going"] = meta_texts[i+1].strip()
                             if "Course :" in text:
@@ -167,11 +160,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 combined_dfs = []
 total_rows = 0
 start_year = 2010
-<<<<<<< HEAD
 end_year = 2025
-=======
-end_year = 2013
->>>>>>> origin/main
 
 for year in range(start_year, end_year + 1):
     file_path = os.path.join(script_dir, f"RacePlaceData_{year}.csv")
@@ -185,9 +174,6 @@ for year in range(start_year, end_year + 1):
         print(f"File {file_path} does not exist, skipping.")
 
 if combined_dfs:
-<<<<<<< HEAD
-    df_combined = pd.concat(combined_dfs, ignore_index=True)
-=======
     # Concatenate dataframes
     df_combined = pd.concat(combined_dfs, ignore_index=True)
     
@@ -196,7 +182,6 @@ if combined_dfs:
     df_combined = df_combined.loc[:, ~df_combined.columns.str.contains('RACE \d+')]
     df_combined = df_combined.loc[:, ~df_combined.columns.duplicated()]
     
->>>>>>> origin/main
     combined_file = os.path.join(script_dir, f"RacePlaceData_{start_year}_{end_year}.csv")
     df_combined.to_csv(combined_file, index=False)
     print(f"\nCombined data saved to {combined_file} with {len(df_combined)} rows")
@@ -206,8 +191,4 @@ if combined_dfs:
         print("Warning: Row count does not match sum of individual files!")
 else:
     print("No data files found to combine.")
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/main
 # %%
