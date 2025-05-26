@@ -154,3 +154,7 @@ race_date_df = pd.read_csv("RacePlaceData_2010_2025.csv").drop_duplicates()
 race_date_df = race_date_df[['Date', 'Course', 'RaceNumber']]
 race_date_df.to_csv("race_date.csv", index=False)
 # %%
+race_date_df = pd.read_csv("RacePlaceData_2010_2025.csv").drop_duplicates()
+race_date_df = race_date_df[['Date', 'Course', 'RaceNumber']]
+race_date_df.to_csv("race_date.csv", index=False)
+# %%
