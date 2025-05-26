@@ -2,4 +2,5 @@ pandas
 requests
 beautifulsoup4
 selenium
-```
+openpyxl
+html5lib
