@@ -30,8 +30,8 @@ def fetch_weather_for_race(race_date, venue):
         print(f"Error fetching weather for {race_date}: {e}")
         return {}
 
+# Add columns for Mean, Max and Min Temperature
 df['MeanTemperature'] = None
-# Add columns for Max and Min Temperature
 df['MaxTemperature'] = None
 df['MinTemperature'] = None
 
