@@ -137,22 +137,12 @@ race_full_df = race_full_df.dropna(how='all')
 race_full_df.to_csv("Race_comments_gear_ordered.csv", index=False)
 
 # Split into two files based on date range
-mask_2010_2018 = (race_full_df['Date'] >= '2010-01-01') & (race_full_df['Date'] <= '2018-12-31')
-mask_2019_2025 = (race_full_df['Date'] >= '2019-01-01') & (race_full_df['Date'] <= '2025-12-31')
+# mask_2010_2018 = (race_full_df['Date'] >= '2010-01-01') & (race_full_df['Date'] <= '2018-12-31')
+# mask_2019_2025 = (race_full_df['Date'] >= '2019-01-01') & (race_full_df['Date'] <= '2025-12-31')
 
-race_full_df.loc[mask_2010_2018].to_csv("Race_comments_gear_ordered_2010_2018.csv", index=False)
-race_full_df.loc[mask_2019_2025].to_csv("Race_comments_gear_ordered_2019_2025.csv", index=False)
+# race_full_df.loc[mask_2010_2018].to_csv("Race_comments_gear_ordered_2010_2018.csv", index=False)
+# race_full_df.loc[mask_2019_2025].to_csv("Race_comments_gear_ordered_2019_2025.csv", index=False)
 
-
-
-# %%
-race_date_df = pd.read_csv("RacePlaceData_2010_2025.csv").drop_duplicates()
-race_date_df = race_date_df[['Date', 'Course', 'RaceNumber']]
-race_date_df.to_csv("race_date.csv", index=False)
-# %%
-race_date_df = pd.read_csv("RacePlaceData_2010_2025.csv").drop_duplicates()
-race_date_df = race_date_df[['Date', 'Course', 'RaceNumber']]
-race_date_df.to_csv("race_date.csv", index=False)
 # %%
 race_date_df = pd.read_csv("RacePlaceData_2010_2025.csv").drop_duplicates()
 race_date_df = race_date_df[['Date', 'Course', 'RaceNumber']]
