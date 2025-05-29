@@ -1,5 +1,7 @@
 # %%
 import pandas as pd
+import re
+import numpy as np
 
 # %%
 race_df = pd.read_csv("RacePlaceData_2010_2025.csv")
@@ -184,4 +186,81 @@ jockey_cols = [col for col in race_full_df.columns if 'JockeyCompetitor' in col]
 other_cols = [col for col in race_full_df.columns if 'JockeyCompetitor' not in col]
 race_full_df = race_full_df[other_cols + jockey_cols]
 
-race_full_df.to_csv("Race_comments_gear_ordered_with_competitors.csv", index=False)
+
+
+def clean_lbw(val):
+    if pd.isna(val) or str(val).strip() == '':
+        return float('nan')
+    val = str(val).strip()
+    if val == '-':
+        return 0.0
+    # Match patterns like "20-1/4" or "2-3/4"
+    match = re.match(r'^(\d+)-(\d+)/(\d+)$', val)
+    if match:
+        whole = int(match.group(1))
+        numerator = int(match.group(2))
+        denominator = int(match.group(3))
+        return whole + numerator / denominator
+    # Match patterns like "1/4"
+    match = re.match(r'^(\d+)/(\d+)$', val)
+    if match:
+        numerator = int(match.group(1))
+        denominator = int(match.group(2))
+        return numerator / denominator
+    # Try to convert directly to float
+    try:
+        return float(val)
+    except Exception:
+        return float('nan')
+
+if 'LBW' in race_full_df.columns:
+    race_full_df['LBW'] = race_full_df['LBW'].apply(clean_lbw).astype(float)
+
+# Clean and convert Distance column
+if 'Distance' in race_full_df.columns:
+    race_full_df = race_full_df.rename(columns={'Distance': 'DistanceMeter'})
+    # Remove 'M', strip spaces, handle NaN, and convert to integer
+    race_full_df['DistanceMeter'] = (
+        race_full_df['DistanceMeter']
+        .astype(str)
+        .str.replace('M', '', regex=False)
+        .str.strip()
+    )
+    # Convert to numeric, coercing errors to NaN, then to Int64 for nullable integer
+    race_full_df['DistanceMeter'] = pd.to_numeric(race_full_df['DistanceMeter'], errors='coerce').astype('Int64')
+
+def split_score_range(val):
+    if pd.isna(val) or str(val).strip() == '':
+        return pd.Series({'MinScore': np.nan, 'MaxScore': np.nan})
+    val = str(val).strip()
+    # Pattern: "80-60" or "95-80"
+    match = re.match(r'^(\d+)\s*-\s*(\d+)$', val)
+    if match:
+        max_score = int(match.group(1))
+        min_score = int(match.group(2))
+        return pd.Series({'MinScore': min_score, 'MaxScore': max_score})
+    # Pattern: "95+"
+    match = re.match(r'^(\d+)\+$', val)
+    if match:
+        min_score = int(match.group(1))
+        return pd.Series({'MinScore': min_score, 'MaxScore': np.nan})
+    # Pattern: just a number
+    match = re.match(r'^(\d+)$', val)
+    if match:
+        score = int(match.group(1))
+        return pd.Series({'MinScore': score, 'MaxScore': score})
+    return pd.Series({'MinScore': np.nan, 'MaxScore': np.nan})
+
+if 'Score range' in race_full_df.columns:
+    score_split = race_full_df['Score range'].apply(split_score_range)
+    # Convert to Int64 for nullable integer
+    score_split['MinScore'] = pd.to_numeric(score_split['MinScore'], errors='coerce').astype('Int64')
+    score_split['MaxScore'] = pd.to_numeric(score_split['MaxScore'], errors='coerce').astype('Int64')
+    race_full_df = pd.concat([race_full_df, score_split], axis=1)
+
+# final part of code:
+mask_2010_2018 = (race_full_df['Date'] >= '2010-01-01') & (race_full_df['Date'] <= '2018-12-31')
+mask_2019_2025 = (race_full_df['Date'] >= '2019-01-01') & (race_full_df['Date'] <= '2025-12-31')
+
+race_full_df.loc[mask_2010_2018].to_csv("Race_comments_gear_ordered_with_competitors_2010_2018.csv", index=False)
+race_full_df.loc[mask_2019_2025].to_csv("Race_comments_gear_ordered_with_competitors_2019_2025.csv", index=False)
