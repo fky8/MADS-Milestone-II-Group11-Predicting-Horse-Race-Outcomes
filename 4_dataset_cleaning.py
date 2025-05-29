@@ -134,7 +134,7 @@ race_full_df = race_full_df.dropna(subset=['Horse', 'Placing'])
 # Drop completely blank rows (all values are NaN)
 race_full_df = race_full_df.dropna(how='all')
 
-race_full_df.to_csv("Race_comments_gear_ordered.csv", index=False)
+# race_full_df.to_csv("Race_comments_gear_ordered.csv", index=False)
 
 # Split into two files based on date range
 # mask_2010_2018 = (race_full_df['Date'] >= '2010-01-01') & (race_full_df['Date'] <= '2018-12-31')
@@ -148,3 +148,40 @@ race_date_df = pd.read_csv("RacePlaceData_2010_2025.csv").drop_duplicates()
 race_date_df = race_date_df[['Date', 'Course', 'RaceNumber']]
 race_date_df.to_csv("race_date.csv", index=False)
 # %%
+# Add HorseCompetitor1 to HorseCompetitor13 columns
+def assign_competitors(group):
+    horse_indices = group['HorseIndex'].tolist()
+    for idx, row in group.iterrows():
+        # Exclude the subject horse from the competitors
+        competitors = [h for h in horse_indices if h != row['HorseIndex']]
+        # Pad with None if fewer than 13 competitors
+        for i in range(1, 14):
+            col_name = f'HorseCompetitor{i}'
+            group.at[idx, col_name] = competitors[i-1] if i-1 < len(competitors) else None
+    return group
+
+race_full_df = race_full_df.groupby(['Date', 'RaceNumber'], group_keys=False).apply(assign_competitors)
+
+# Sort columns to move new competitor columns to the end
+competitor_cols = [col for col in race_full_df.columns if 'HorseCompetitor' in col]
+other_cols = [col for col in race_full_df.columns if 'HorseCompetitor' not in col]
+race_full_df = race_full_df[other_cols + competitor_cols]
+
+# Add JockeyCompetitor1 to JockeyCompetitor13 columns
+def assign_jockeys(group):
+    jockeys = group['Jockey'].tolist()
+    for idx, row in group.iterrows():
+        competitors = [j for j in jockeys if j != row['Jockey']]
+        for i in range(1, 14):
+            col_name = f'JockeyCompetitor{i}'
+            group.at[idx, col_name] = competitors[i-1] if i-1 < len(competitors) else None
+    return group
+
+race_full_df = race_full_df.groupby(['Date', 'RaceNumber'], group_keys=False).apply(assign_jockeys)
+
+# Sort columns to move new competitor columns to the end
+jockey_cols = [col for col in race_full_df.columns if 'JockeyCompetitor' in col]
+other_cols = [col for col in race_full_df.columns if 'JockeyCompetitor' not in col]
+race_full_df = race_full_df[other_cols + jockey_cols]
+
+race_full_df.to_csv("Race_comments_gear_ordered_with_competitors.csv", index=False)
