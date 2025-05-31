@@ -199,6 +199,45 @@ def clean_jockey_data():
 
     return df
 
+
+def create_aggregate_jockey_win_stats():
+    """
+    Aggregate the jockey data to itself to calculate cumulative win stats 
+    for every race date.
+    Returns a DataFrame with aggregated jockey data for win stats.
+    """
+
+    df = pd.read_csv('./data/jockey_race_data_clean.csv')
+
+    df['race_event_count'] = 1
+    df_max_stats = df.groupby(['jockey_id', 'season', 'race_date']).agg({
+        'first_place_win': 'max',
+        'second_place_win': 'max',
+        'third_place_win': 'max',
+        'race_event_count': 'sum'
+    }).reset_index()
+
+    df_max_stats = df_max_stats.sort_values(by=['jockey_id', 'season', 'race_date'], ascending=[True, True, False])
+    
+
+    df_max_stats_cummulative = df_max_stats.groupby(by=['jockey_id', 'season'], as_index=False).apply(lambda x: x.iloc[::-1].cumsum()).reset_index(drop=True)
+    
+    df_max_stats_cummulative['jockey_id'] = df_max_stats['jockey_id'].astype(str)
+    df_max_stats_cummulative['season'] = df_max_stats['season'].astype(str)
+    df_max_stats_cummulative['race_date'] = df_max_stats['race_date'].astype(str)
+
+    df_max_stats_cummulative['total_wins'] = df_max_stats_cummulative['first_place_win'] + df_max_stats_cummulative['second_place_win'] + df_max_stats_cummulative['third_place_win']
+    df_max_stats_cummulative['first_place_win_rate'] = round(df_max_stats_cummulative['first_place_win'] / df_max_stats_cummulative['total_wins'], 7)
+    df_max_stats_cummulative['second_place_win_rate'] = round(df_max_stats_cummulative['second_place_win'] / df_max_stats_cummulative['total_wins'], 7)
+    df_max_stats_cummulative['third_place_win_rate'] = round(df_max_stats_cummulative['third_place_win'] / df_max_stats_cummulative['total_wins'], 7)
+    df_max_stats_cummulative['total_win_rate'] = round(df_max_stats_cummulative['total_wins'] / df_max_stats_cummulative['race_event_count'], 7)
+
+
+    script_dir = os.path.dirname(os.path.abspath(__file__)) 
+    file_path = os.path.join(script_dir, f"data/jockey_win_stats_cumsum.csv")
+    df_max_stats_cummulative.to_csv(file_path, index=False)
+
+
 def main(df_idx):
     print('main')
 
@@ -206,7 +245,8 @@ if __name__ == "__main__":
     # df = scrape_all_horses()
     # main(df)
     # scrape_all_jockeys()
-    clean_jockey_data()
+    # clean_jockey_data()
+    create_aggregate_jockey_win_stats()
 
 
 # %%
