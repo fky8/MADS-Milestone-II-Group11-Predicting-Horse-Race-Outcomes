@@ -216,17 +216,26 @@ def scrape_inactive_horses():
     # Load race data and extract HorseIndex and year
     df = pd.read_csv("RacePlaceData_2010_2025.csv")
     df = df[['Horse','Date']]
-    df['Horse'] = df['Horse'].str.extract(r'\(([\w\d]+)\)')
-    df['Horse'] = df['Horse'].str[-4:]
+    df['HorseIndex'] = df['Horse'].str.extract(r'\(([^)]+)\)')
+    df['Horse'] = df['Horse'].str.replace(r'\s*\([^)]*\)', '', regex=True)
     df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.year
     df = df.sort_values('Date')
     df = df.drop_duplicates(subset=['Horse'], keep='first')
-    df = df[~df['Horse'].isin(active_horse_df['HorseIndex'])]
+    # Identify and print horses dropped because they are in active horse df
+    dropped_horses = df[df['Horse'].isin(active_horse_df['HorseName'])]
+    if not dropped_horses.empty:
+        print("Horses dropped because they are in active horse df:")
+        print(dropped_horses[['Horse', 'HorseIndex', 'Date']])
+
+    # Remove horses present in active horse df
+    df = df[~df['Horse'].isin(active_horse_df['HorseName'])]
+    # After extracting HorseIndex, keep only the last 4 alphanumeric characters
+    df['HorseIndex'] = df['HorseIndex'].astype(str).str.replace(r'\W', '', regex=True).str[-4:]
     df.to_csv("inactive_horses.csv", index=False)
     print(f"Inactive horses to scrape: {len(df)}")
     results = []
     for _, row in df.iterrows():
-        horseindex = row['Horse']
+        horseindex = row['HorseIndex']
         year = row['Date']
         if pd.isna(horseindex) or pd.isna(year):
             continue
@@ -255,7 +264,7 @@ def scrape_inactive_horses():
     else:
         print("No inactive horse profiles scraped.")
         return pd.DataFrame()
-
+# %%
 def main():
     # 1. Scrape active horses and their profiles
     print("Scraping active horses...")
@@ -292,7 +301,11 @@ def main():
     df_inactive.columns = df_inactive.columns.str.replace('*', '', regex=False)
     df_inactive = df_inactive.replace(r'\$', '', regex=True)
 
+# %%
     # 3. Merge and save all profiles
+    # import pandas as pd
+    # df_active = pd.read_csv(OUTPUT_CSV)
+    # df_inactive = pd.read_csv("inactive_horses_profiles.csv")
     if not df_inactive.empty:
         merged = pd.concat([df_active, df_inactive], ignore_index=True)
         merged = merged.drop_duplicates(subset=["HorseIndex"], keep="first")

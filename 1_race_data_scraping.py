@@ -47,7 +47,10 @@ for year in range(START_YEAR, END_YEAR + 1):
             print(f"  • Course: {course}")
 
             # Scraping Rule: Race 1 must exist
-   
+            url1 = (
+              "https://racing.hkjc.com/racing/information/English/Racing/LocalResults.aspx"
+              f"?RaceDate={ds}&Racecourse={course}&RaceNo=1"
+            )
             driver.get(url1)
 
             try:
@@ -188,6 +191,9 @@ if combined_dfs:
         "('Course', '')", "('RaceNumber', '')"
     ]
     df_combined = df_combined.drop(columns=[col for col in df_combined.columns if str(col) in phantom_cols], errors='ignore')
+    
+    # Drop rows with blank value in 'Horse' column
+    df_combined = df_combined[df_combined['Horse'].notna() & (df_combined['Horse'].astype(str).str.strip() != '')]
     
     combined_file = os.path.join(script_dir, f"RacePlaceData_{start_year}_{end_year}.csv")
     df_combined.to_csv(combined_file, index=False)
