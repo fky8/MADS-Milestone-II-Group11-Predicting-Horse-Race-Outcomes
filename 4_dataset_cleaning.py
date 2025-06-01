@@ -220,8 +220,8 @@ def main():
     # Output
     mask_2010_2018 = (race_full_df['Date'] >= '2010-01-01') & (race_full_df['Date'] <= '2018-12-31')
     mask_2019_2025 = (race_full_df['Date'] >= '2019-01-01') & (race_full_df['Date'] <= '2025-12-31')
-    race_full_df.loc[mask_2010_2018].to_csv("Race_comments_gear_ordered_with_competitors_2010_2018.csv", index=False)
-    race_full_df.loc[mask_2019_2025].to_csv("Race_comments_gear_ordered_with_competitors_2019_2025.csv", index=False)
+    race_full_df.loc[mask_2010_2018].to_csv("Race_comments_gear_horse_competitors_2010_2018.csv", index=False)
+    race_full_df.loc[mask_2019_2025].to_csv("Race_comments_gear_horse_competitors_2019_2025.csv", index=False)
 
 if __name__ == "__main__":
     main()
