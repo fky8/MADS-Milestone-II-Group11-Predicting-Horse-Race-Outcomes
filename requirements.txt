@@ -6,3 +6,4 @@ numpy
 selenium
 openpyxl
 html5lib
+scikit-learn

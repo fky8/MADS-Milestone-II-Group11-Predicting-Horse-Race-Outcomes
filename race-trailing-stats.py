@@ -33,7 +33,7 @@ def create_trailing_average_win_stats(groupby='Horse', metric_grouping='Score ra
     df_filtered['RunningPosition3'] = df_filtered['RunningPosition3'].astype(float)
     df_filtered['RunningPosition4'] = df_filtered['RunningPosition4'].astype(float)
     df_filtered['RunningPosition5'] = df_filtered['RunningPosition5'].astype(float)
-    df_filtered['RunningPosition6'] = df_filtered['RunningPosition6'].astype(float)    
+    df_filtered['RunningPosition6'] = df_filtered['RunningPosition6'].astype(float)
     df_filtered['Date'] = pd.to_datetime(df_filtered['Date'])
     df_filtered['Count'] = 1
     
