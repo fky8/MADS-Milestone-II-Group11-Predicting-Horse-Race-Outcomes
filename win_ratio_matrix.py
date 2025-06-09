@@ -22,7 +22,133 @@ def get_race_dataset(start_date='2019-01-01', end_date='2025-12-31'):
 
 
 
-def create_win_ratio_matrix(df_race_dataset=None):
+def create_win_ratio_matrix(target_feature: str ='Horse', 
+                            comparison_feature: str ='Jockey', 
+                            df_race_dataset: pd.DataFrame = None) -> defaultdict[any, float]:
+    """
+    Create a win ratio matrix for horses based on horse vs horse.
+    """
+
+    list_target = df_race_dataset.sort_values(by=[target_feature], ascending=[True])[target_feature].unique().tolist()
+    list_comparison = df_race_dataset.sort_values(by=[comparison_feature], ascending=[True])[comparison_feature].unique().tolist()
+    
+    horses = df_race_dataset.sort_values(by=['Horse'], ascending=[True])['Horse'].unique().tolist()
+     
+    
+    # The next six lines of code create a dictionary of races 
+    # grouped by date and race number to iterate over to calculate
+    # the win ratio matrix of the target vs comparison featuires.
+    df_target_race_outcomes = df_race_dataset.sort_values(by=['Date', 'RaceNumber'], ascending=[True, True])[[target_feature, comparison_feature, 'Date', 'RaceNumber', 'Placing']]
+    list_target_race_outcomes = df_target_race_outcomes.values.tolist()
+
+    list_target_races = df_target_race_outcomes[['Date', 'RaceNumber']].drop_duplicates().values.tolist()
+    dict_target_races = {(race[0], race[1]): [] for race in list_target_races}
+
+    for row in list_target_race_outcomes:
+        dict_target_races[(row[1], row[2])].append(row)
+
+    # Initialize dictionaries to hold occurrences, wins, and win ratios 
+    # for each target_feature and comparison_feature pair
+    dict_occurrence = defaultdict(float)
+    dict_won = defaultdict(float)
+    dict_win_ratio = defaultdict(float)
+    for target in list_target:
+        for comparison in list_comparison:
+            if target != comparison:  
+                dict_occurrence[(target, comparison)] = 0.0
+                dict_won[(target, comparison)] = 0.0
+                dict_win_ratio[(target, comparison)] = 0.0
+
+    # Loop through all races and calculate the win ratios
+    # If the target feature is the same as the comparison feature,
+    # assume the comparison is an opponent based caclulation.
+    # opponent based caclulation the win ratio is calculated 
+    # as an average placing difference between the target and comparison features.
+    # So if horse A palces 3rd and Horse B places 8th, the points difference is 5,
+    # average over all horse A and horse B match-ups. 
+    if target_feature == comparison_feature:
+        for race in list_target_races:        
+            for outcome_target in dict_target_races[(race[0], race[1])]:            
+                for outcome_comparison in dict_target_races[(race[0], race[1])]:                
+                    if outcome_target[0] != outcome_comparison[1]:                    
+                        points = outcome_comparison[4] - outcome_target[4]
+                        dict_won[(outcome_target[0], outcome_comparison[1])] += points
+                        dict_occurrence[(outcome_target[0], outcome_comparison[1])] += 1.0
+                        
+                        points = dict_won[(outcome_target[0], outcome_comparison[1])]
+                        occurences = dict_occurrence[(outcome_target[0], outcome_comparison[1])]
+                        if occurences > 0:
+                            dict_win_ratio[(outcome_target[0], outcome_comparison[1])] = points / occurences                 
+    else:
+    # If the target feature is NOT the same as the comparison feature,
+    # assume the comparison is target_feature given the comparison_feature caclulation.
+    # Ex. If the target horse is ridden by a given jockey, the calculation will be the 
+    # average differnce between 1st place and the horse's finishing placing
+        first_place = 1
+        for race in list_target_races:        
+            for outcome_target in dict_target_races[(race[0], race[1])]:                            
+                if outcome_target[0] != outcome_target[1]:                    
+                    points = first_place - outcome_target[4]
+                    dict_won[(outcome_target[0], outcome_target[1])] += points
+                    dict_occurrence[(outcome_target[0], outcome_target[1])] += 1.0
+                    
+                    points = dict_won[(outcome_target[0], outcome_target[1])]
+                    occurences = dict_occurrence[(outcome_target[0], outcome_target[1])]
+                    if occurences > 0:
+                        dict_win_ratio[(outcome_target[0], outcome_target[1])] = points / occurences
+
+
+    df_win_ratio = pd.DataFrame.from_dict(dict_win_ratio, orient='index', columns=['Win Ratio'])
+    df_win_ratio.reset_index(inplace=True)
+    df_win_ratio[[target_feature, comparison_feature]] = pd.DataFrame(df_win_ratio['index'].tolist(), index=df_win_ratio.index)
+    df_win_ratio.drop('index', axis=1, inplace=True)
+    df_win_ratio.sort_values(by=[target_feature, comparison_feature], ascending=[True, True], inplace=True)
+
+    scaler = MinMaxScaler()
+    scaled_values = scaler.fit_transform(df_win_ratio[['Win Ratio']])
+    df_win_ratio_normalized = pd.DataFrame(scaled_values, columns=['Win Ratio Normalized'])
+    df_win_ratio = pd.concat([df_win_ratio, df_win_ratio_normalized], axis=1)
+    
+    df_win_ratio['Win Ratio Normalized'] = df_win_ratio['Win Ratio Normalized'].replace(0.0, 0.0001)
+    
+    for index, row in df_win_ratio.iterrows():
+        key = (row['Horse'], row['Opponent'])
+        dict_win_ratio[key] = row['Win Ratio Normalized']
+
+    return dict_win_ratio
+
+
+
+def create_race_embeddings(target_feature: str ='Horse',
+                           df_race_dataset: pd.DataFrame = None, 
+                           dict_win_ratio: defaultdict[any, float] = None):
+
+    targets = df_race_dataset.sort_values(by=[target_feature], ascending=[True])[target_feature].unique().tolist()
+
+    embedding_dim = 10
+    race_embeddings = {
+        target: np.random.randn(embedding_dim) for target in targets
+    }
+
+    learning_rate = 0.01
+    num_epochs = 100
+
+    for epoch in range(num_epochs):
+        total_loss = 0
+        for (i, j), ratio in dict_win_ratio.items():
+            dot_product = np.dot(race_embeddings[i], race_embeddings[j])
+            diff = dot_product - np.log(ratio)
+            total_loss += 0.5 * diff**2
+            gradient = diff * race_embeddings[j]
+            race_embeddings[i] -= learning_rate * gradient
+
+        print(f"Epoch: {epoch+1}, Loss: {total_loss}, Avg Pair Loss: {total_loss / len(dict_win_ratio)}")
+
+    return race_embeddings
+
+
+def create_win_ratio_matrix_old(df_race_dataset: 
+                                pd.DataFrame =None) -> defaultdict[any, float]:
     """
     Create a win ratio matrix for horses based on horse vs horse.
     """
@@ -66,36 +192,23 @@ def create_win_ratio_matrix(df_race_dataset=None):
     df_win_ratio.drop('index', axis=1, inplace=True)
     df_win_ratio.sort_values(by=['Horse', 'Opponent'], ascending=[True, True], inplace=True)
 
-    # for index, row in df_win_ratio.head(1000).iterrows():
-    #     print(f"{row['Horse']} vs {row['Opponent']}: {row['Win Ratio']:.2f}")
-
-    # Normalize the win ratio to a range of 0 to 1 to remove negative values
     scaler = MinMaxScaler()
     scaled_values = scaler.fit_transform(df_win_ratio[['Win Ratio']])
     df_win_ratio_normalized = pd.DataFrame(scaled_values, columns=['Win Ratio Normalized'])
     df_win_ratio = pd.concat([df_win_ratio, df_win_ratio_normalized], axis=1)
-
-    # for index, row in df_win_ratio.head(1000).iterrows():
-    #     print(f"{row['Horse']} vs {row['Opponent']}: {row['Win Ratio Normalized']:.2f}")
-
-    # df_win_ratio = df_win_ratio[df_win_ratio['Win Ratio Normalized'] > 0.0]
-    # handle cases where normalized win ratio is zero
-    # print(f"Total horse pairs: {df_win_ratio[df_win_ratio['Win Ratio Normalized'] == 0.0].head(12)}")
     
     df_win_ratio['Win Ratio Normalized'] = df_win_ratio['Win Ratio Normalized'].replace(0.0, 0.0001)
-    # df_win_ratio['Win Ratio Normalized'] = df_win_ratio['Win Ratio Normalized'].replace(0.5, 0.0001)
     
     for index, row in df_win_ratio.iterrows():
         key = (row['Horse'], row['Opponent'])
-        # dict_horse_win_ratio[key] = row['Win Ratio']
         dict_horse_win_ratio[key] = row['Win Ratio Normalized']
-        # print(f"{row['Horse']} vs {row['Opponent']}: {dict_horse_win_ratio[key]:.2f}")
-
 
     return dict_horse_win_ratio
 
 
-def create_race_embeddings(df_race_dataset=None, dict_win_ratio=None):
+
+def create_race_embeddings_old(df_race_dataset: pd.DataFrame = None, 
+                           dict_win_ratio: defaultdict[any, float] = None):
 
     horses = df_race_dataset.sort_values(by=['Horse'], ascending=[True])['Horse'].unique().tolist()
 
@@ -103,9 +216,6 @@ def create_race_embeddings(df_race_dataset=None, dict_win_ratio=None):
     race_embeddings = {
         horse: np.random.randn(embedding_dim) for horse in horses
     }
-
-    # for embedding in race_embeddings.values():
-    #     print(f"Initial embedding: {embedding}")
 
     learning_rate = 0.01
     num_epochs = 100
@@ -118,33 +228,13 @@ def create_race_embeddings(df_race_dataset=None, dict_win_ratio=None):
             total_loss += 0.5 * diff**2
             gradient = diff * race_embeddings[j]
             race_embeddings[i] -= learning_rate * gradient
-            # print(f"Comparing {i} vs {j}: dot_product={dot_product}")
-            # print(f"Comparing {i} vs {j}: ratio={ratio}")
-            # print(f"Comparing {i} vs {j}: diff={diff}")
-            # print(f"Comparing {i} vs {j}: total_loss={total_loss}")
-            # print(f"Comparing {i} vs {j}: gradient={gradient}")
-            # print(f"Comparing {i} vs {j}: race_embeddings={race_embeddings[i]}")
 
-
-
-        print(f"Epoch: {epoch+1}, Loss: {total_loss}, {total_loss / len(dict_win_ratio)}")
-
-    # print("Final horse embeddings:")
-    # for horse, embedding in race_embeddings.items(): 
-    #     print(f"{horse}: {embedding}")
+        print(f"Epoch: {epoch+1}, Loss: {total_loss}, Avg Pair Loss: {total_loss / len(dict_win_ratio)}")
 
     return race_embeddings
 
-
 df_rd = get_race_dataset(start_date='2024-05-01', end_date='2024-5-31')
-# df_rd = df_rd[(df_rd['RaceNumber'] == 1.0) & (df_rd['Date'] == '2024-05-01')]
-# print(len(df_rd))
-# print(df_rd[['Date', 'RaceNumber']].head(len(df_rd)))
 dict_wr = create_win_ratio_matrix(df_race_dataset=df_rd)
-
-# for key, value in dict_wr.items():
-#     print(f"{key[0]} vs {key[1]}: {value:.2f}")
-
 race_embeddings = create_race_embeddings(df_race_dataset=df_rd, dict_win_ratio=dict_wr)
 
 
