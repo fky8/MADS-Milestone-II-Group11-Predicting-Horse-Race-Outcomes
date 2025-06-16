@@ -46,7 +46,7 @@ def load_and_merge_data(
     stats_df = stats_df.sort_values(['jockey_id', 'race_date']).reset_index(drop=True)
 
     # Perform a per-jockey as-of merge to get latest stats before each race
-    # race_df = race_df.dropna(subset=['Date', 'jockey_id'])
+    race_df = race_df.dropna(subset=['Date', 'jockey_id'])
     merged_parts = []
     for jid, group in race_df.groupby('jockey_id'):
         stats_j = stats_df[stats_df['jockey_id'] == jid]
