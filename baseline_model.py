@@ -48,20 +48,24 @@ def load_and_merge_data(
     # Perform a per-jockey as-of merge to get latest stats before each race
     race_df = race_df.dropna(subset=['Date', 'jockey_id'])
     merged_parts = []
-    for jid, group in race_df.groupby('jockey_id'):
-        stats_j = stats_df[stats_df['jockey_id'] == jid]
-        if not stats_j.empty:
-            merged_group = pd.merge_asof(
-                group.sort_values('Date'),
-                stats_j.sort_values('race_date'),
-                left_on='Date',
-                right_on='race_date',
-                direction='backward',
-                allow_exact_matches=False
-            )
+    for jid, group in race_df.groupby('jockey_id', dropna=False):  # include NaN groups
+        if pd.notna(jid):
+            stats_j = stats_df[stats_df['jockey_id'] == jid]
+            if not stats_j.empty:
+                merged_group = pd.merge_asof(
+                    group.sort_values('Date'),
+                    stats_j.sort_values('race_date'),
+                    left_on='Date',
+                    right_on='race_date',
+                    direction='backward',
+                    allow_exact_matches=False,
+                )
+            else:
+                merged_group = group
         else:
-            merged_group = group
+            merged_group = group  # rows with unknown jockey_id keep NaN stats
         merged_parts.append(merged_group)
+
     merged = pd.concat(merged_parts, ignore_index=True)
 
     # Convert win rate columns from string percentages to numeric fractions
