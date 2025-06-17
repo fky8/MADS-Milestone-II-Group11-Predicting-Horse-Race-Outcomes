@@ -24,9 +24,15 @@ def load_and_merge_data(
     # Drop unnecessary columns that may induce leakage
     race_df = race_df.drop(columns=['Total Stakes', 'Age', 'No. of 1-2-3-Starts',
                                     'No. of starts in past 10 race meetings',
-                                    'Current Stable Location (Arrival Date)',
+                                    'Current Stable Location (Arrival Date)', 'LBW', 'Comment',
                                     'Last Rating For Retired','Start of Season Rating',
-                                    'Current Rating','Season Stakes'], errors='ignore')
+                                    'Current Rating','Season Stakes','Time 1', 'Time 2', 
+                                    'Time 3', 'Time 4', 'Time 5', 'Time 6', 'Sectional Time 1', 
+                                    'Sectional Time 2', 'Sectional Time 3', 'Sectional Time 4', 
+                                    'Sectional Time 5', 'Sectional Time 6', 'Running Position', 
+                                    'RunningPosition1', 'RunningPosition2', 'RunningPosition3', 
+                                    'RunningPosition4', 'RunningPosition5', 'RunningPosition6', 
+                                    'Finish Time',], errors='ignore')
     # Ensure 'Date' is in datetime format
     race_df['Date'] = pd.to_datetime(race_df['Date'], errors='coerce')
 
@@ -46,7 +52,6 @@ def load_and_merge_data(
     stats_df = stats_df.sort_values(['jockey_id', 'race_date']).reset_index(drop=True)
 
     # Perform a per-jockey as-of merge to get latest stats before each race
-    # race_df = race_df.dropna(subset=['Date', 'jockey_id'])
     merged_parts = []
     for jid, group in race_df.groupby('jockey_id', dropna=False):  # include NaN groups
         if pd.notna(jid):
@@ -81,11 +86,8 @@ def load_and_merge_data(
 
     # Convert column to numeric format, coercing errors to NaN
     merged['Win Odds'] = pd.to_numeric(merged['Win Odds'], errors='coerce')
-    # Convert column to numeric format, coercing errors to NaN
     merged['Handicap'] = pd.to_numeric(merged['Handicap'], errors='coerce')
-    # Convert column to numeric format, coercing errors to NaN
     merged['Dr.'] = pd.to_numeric(merged['Dr.'], errors='coerce')
-    # Convert column to numeric format, coercing errors to NaN
     merged['DistanceMeter'] = pd.to_numeric(merged['DistanceMeter'], errors='coerce')
 
     # Create binary target label: 1 if placing is 1st to 3rd, else 0
@@ -95,10 +97,22 @@ def load_and_merge_data(
 
 # Function to split data into train/validation sets, build a pipeline, and evaluate a logistic regression model
 def build_and_evaluate(df: pd.DataFrame) -> None:
-    # Drop rows with missing date
-    # df = df.dropna(subset=['Date'])
-    # Sort data by date to simulate time-aware train/test split
-    df = df.sort_values('Date')
+    """Train a baseline model using a time ordered train/validation split
+    grouped by race.
+
+    The split is performed on unique (Date, RaceNumber) combinations so that
+    all horses from the same race end up in the same set.  The races are first
+    ordered chronologically and only past races are used for training in order
+    to avoid data leakage.
+    """
+
+    # Ensure required columns are present and in the correct types
+    df = df.dropna(subset=["Date", "RaceNumber"])
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    df["RaceNumber"] = pd.to_numeric(df["RaceNumber"], errors="coerce")
+
+    # Sort by date for a time-aware split
+    df = df.sort_values("Date")
 
     # Select features excluding label and original placing column
     feature_cols = [c for c in df.columns if c not in {'label', 'Placing'}]
@@ -110,11 +124,15 @@ def build_and_evaluate(df: pd.DataFrame) -> None:
         feature_cols.append(col + '_ordinal')
         feature_cols.remove(col)
 
-    # Split the dataset by date into 80% training and 20% validation sets
-    split_date = df['Date'].quantile(0.8)
-    train_df = df[df['Date'] < split_date]
-    val_df = df[df['Date'] >= split_date]
+    # Determine unique races ordered by date
+    race_order = df[["Date", "RaceNumber"]].drop_duplicates().sort_values("Date")
+    split_idx = int(len(race_order) * 0.8)
+    train_keys = race_order.iloc[:split_idx]
+    val_keys = race_order.iloc[split_idx:]
 
+    # Keep entire races together in train/validation splits
+    train_df = df.merge(train_keys, on=["Date", "RaceNumber"], how="inner")
+    val_df = df.merge(val_keys, on=["Date", "RaceNumber"], how="inner")
     X_train = train_df[feature_cols]
     y_train = train_df['label']
     X_val = val_df[feature_cols]
@@ -140,7 +158,7 @@ def build_and_evaluate(df: pd.DataFrame) -> None:
     )
 
     # Build modeling pipeline: preprocessing + logistic regression
-    clf = Pipeline(steps=[('preprocess', preprocessor), ('model', LogisticRegression(max_iter=1000))])
+    clf = Pipeline(steps=[('preprocess', preprocessor), ('model', LogisticRegression(solver='saga', max_iter=50000, n_jobs=-1, class_weight='balanced'))])
 
     # Train the model
     clf.fit(X_train, y_train)
@@ -162,5 +180,6 @@ if __name__ == "__main__":
         "data/jockey/jockey_names.xlsx",
         "data/weather_data/race_date_with_weather.csv",
     )
-    data.to_csv("dataset_to_train.csv", index=False)
+    data = data.sort_values(by=['Date', 'RaceNumber', 'Horse No.'])
+    data.to_csv("dataset_used_in_baseline_model.csv", index=False)
     build_and_evaluate(data)
