@@ -6,3 +6,6 @@ numpy
 selenium
 openpyxl
 html5lib
+scikit-learn
+tqdm
+matplotlib
