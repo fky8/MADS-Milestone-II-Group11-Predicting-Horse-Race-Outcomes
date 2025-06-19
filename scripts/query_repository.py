@@ -240,7 +240,7 @@ def get_ml_training_data() -> pd.DataFrame:
 
 
 
-build_ml_training_data()
+# build_ml_training_data()
 
 
 # trs = ['TR3']

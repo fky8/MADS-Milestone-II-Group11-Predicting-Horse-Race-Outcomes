@@ -117,9 +117,17 @@ keep_cols = [
             "DistanceMeterAsStr_2400.0 Placing Value TR7",
             "DistanceMeterAsStr_1650.0 Placing Value TR1",
             "DistanceMeterAsStr_1650.0 Placing Value TR3",
-            "DistanceMeterAsStr_1650.0 Placing Value TR7"
-
-
+            "DistanceMeterAsStr_1650.0 Placing Value TR7",
+            "H_Emb_0",
+            "H_Emb_1",
+            "H_Emb_2",
+            "H_Emb_3",
+            "H_Emb_4",
+            "J_Emb_H_Emb_0",
+            "J_Emb_H_Emb_1",
+            "J_Emb_H_Emb_2",
+            "J_Emb_H_Emb_3",
+            "J_Emb_H_Emb_4"
              ]
 
 # df_encoded = df_data.drop(columns=drop_cols, errors='ignore')
