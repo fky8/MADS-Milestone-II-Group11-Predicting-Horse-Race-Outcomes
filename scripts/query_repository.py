@@ -1,6 +1,6 @@
 import pandas as pd
 from typing import List
-import sqlite3
+import os
 
 
 def get_race_dataset_old(start_date='2019-01-01', end_date='2025-12-31'):   
@@ -44,49 +44,38 @@ def get_race_dataset(start_date='2019-01-01', end_date='2025-12-31'):
     # Drop fileds that are associated with dataleakage 
     drop_cols = [
         
-        # 'Placing', 
 
-        'Unnamed: 13', # data is only know during the race, ie. data leakage
-        'race_wins', # data is only know during the race, ie. data leakage
-        'first_place_win', # data is only know during the race, ie. data leakage
-        'second_place_win', # data is only know during the race, ie. data leakage
-        'third_place_win', # data is only know during the race, ie. data leakage
-        'Race Index', # data is only know during the race, ie. data leakage
-        'Race Sub Index', # data is only know during the race, ie. data leakage
-        'Rtg.', # data is only know during the race, ie. data leakage
         
-        
-        'Total Stakes', # useless, doesn't reflect the current state of the horse
-        'Age', # useless, doesn't reflect the current state of the horse 
-         # (always current age, does not reflect age at time of race)
-        'No. of 1-2-3-Starts', # does not reflect the true value at time of race
+        'Total Stakes',
+        'Age',        
+        'No. of 1-2-3-Starts',
         'No. of starts in past 10 race meetings', 
         'Current Stable Location (Arrival Date)', 
-        'LBW', # distance from winning horse, ie. data leakage
-        'Comment', "useless"
-        'Last Rating For Retired', "useless"
-        'Start of Season Rating', "useless"
-        'Current Rating', "useless"
-        'Season Stakes', # useless, doesn't reflect the current state of the horse
-        'Time 1', # data is only know during the race, ie. data leakage
-        'Time 2', # data is only know during the race, ie. data leakage
-        'Time 3', # data is only know during the race, ie. data leakage
-        'Time 4', # data is only know during the race, ie. data leakage
-        'Time 5', # data is only know during the race, ie. data leakage
-        'Time 6', # data is only know during the race, ie. data leakage
-        'Sectional Time 1', # data is only know during the race, ie. data leakage
-        'Sectional Time 2', # data is only know during the race, ie. data leakage
-        'Sectional Time 3', # data is only know during the race, ie. data leakage
-        'Sectional Time 4', # data is only know during the race, ie. data leakage
-        'Sectional Time 5', # data is only know during the race, ie. data leakage
-        'Sectional Time 6', # data is only know during the race, ie. data leakage
-        'Running Position', # data is only know during the race, ie. data leakage
-        'RunningPosition1', # data is only know during the race, ie. data leakage
-        'RunningPosition2', # data is only know during the race, ie. data leakage
-        'RunningPosition3',# data is only know during the race, ie. data leakage
-        'RunningPosition4', # data is only know during the race, ie. data leakage
-        'RunningPosition5', # data is only know during the race, ie. data leakage
-        'RunningPosition6', # data is only know during the race, ie. data leakage
+        'LBW',
+        'Comment',
+        'Last Rating For Retired',
+        'Start of Season Rating',
+        'Current Rating',
+        'Season Stakes',
+        'Time 1',
+        'Time 2',
+        'Time 3',
+        'Time 4',
+        'Time 5',
+        'Time 6',
+        'Sectional Time 1',
+        'Sectional Time 2',
+        'Sectional Time 3',
+        'Sectional Time 4',
+        'Sectional Time 5',
+        'Sectional Time 6',
+        'Running Position',
+        'RunningPosition1',
+        'RunningPosition2',
+        'RunningPosition3',
+        'RunningPosition4',
+        'RunningPosition5',
+        'RunningPosition6'
     ]
 
     df_filtered.drop(columns=drop_cols, inplace=True)
@@ -157,77 +146,52 @@ def get_race_data_with_trailing_stats(groupby: str ='Horse') -> pd.DataFrame:
 
 
 
-def merge_horse_jockey_embeddings() -> pd.DataFrame:
+def merge_horse_jockey_embeddings(df_trailing_stats: pd.DataFrame) -> pd.DataFrame:
     """
     Merges horse jockey co-ocurrence embedding into 
     race data with trailing stats.
     """
 
-    df = get_race_data_with_trailing_stats(groupby='Horse')
+    df_trailing_stats = get_race_data_with_trailing_stats(groupby='Horse')
     # ['Horse', 'Jockey', 'Date', 'RaceNumber']    
-    df_horse_jockey_embeddings = pd.read_csv('./data/Horse_Jockey_Embeddings.csv')
-    df_horse_jockey_embeddings.rename(columns={'Date Begin': 'Date_Begin'}, inplace=True)
-    df_horse_jockey_embeddings.rename(columns={'Date End': 'Date_End'}, inplace=True)    
+    df_horse_jockey_embeddings = pd.read_csv('./data/Horse_Jockey_Embeddings_180.csv')
+    df_horse_jockey_embeddings['Date'] = pd.to_datetime(df_horse_jockey_embeddings['Date'])
     df_horse_jockey_embeddings.rename(columns={'Target Feature': 'Target_Feature'}, inplace=True)    
+
+    # print('df_horse_jockey_embeddings', df_horse_jockey_embeddings.dtypes)
+    # print('df_trailing_stats', df_trailing_stats.dtypes)
+
 
     embedding_cols = df_horse_jockey_embeddings.columns.tolist()
     embedding_cols = [col for col in embedding_cols if col not in\
-                       ['Target_Feature', 'Date_Begin', 'Date_End', 'Trailing Days']]
+                       ['Target_Feature', 'Date']]
     
     for i in range(len(embedding_cols)):
         embedding_cols[i] = "H_Emb_" + str(embedding_cols[i]) 
         df_horse_jockey_embeddings.rename(columns={str(i): embedding_cols[i]}, inplace=True)
 
-    # Need an in-memory db connection to crease a between join
-    # To perform the same operation in pandas a cross join is required
-    # which is requires a lot of memory and is difficult to read.
-    # I decided to use sqlite3 to perform the join using SQL syntax.
-    conn = sqlite3.connect(':memory:')
+    df_merged = pd.merge(df_trailing_stats, df_horse_jockey_embeddings,
+                         left_on=['Horse', 'Date'],
+                         right_on=['Target_Feature', 'Date'],
+                         how='left',
+                         suffixes=('', '_y'))
 
-    df.to_sql('races', conn, index=False, if_exists='replace')
-    df_horse_jockey_embeddings.to_sql('horse_jockey', conn, index=False, if_exists='replace')    
-
-    horse_field_names = ", ".join(embedding_cols)
-    print(f"horse_field_names: {horse_field_names}")
-    sql_str = """
-        SELECT 
-            r.*,
-            {{horse_field_names}}
-        FROM
-            races as r
-            left join horse_jockey as hj
-            on r.Date between hj.Date_Begin and hj.Date_End
-            and r.Horse = hj.Target_Feature
-    """
-
-    sql_str = sql_str.replace("{{horse_field_names}}", horse_field_names)
-
-    df_merged = pd.read_sql_query(sql_str, conn)
 
     for i in range(len(embedding_cols)):
         embedding_cols[i] = "J_Emb_" + str(embedding_cols[i]) 
-        df_horse_jockey_embeddings.rename(columns={"H_Emb_" + str(i): embedding_cols[i]}, inplace=True)
+        df_horse_jockey_embeddings.rename(columns={str("H_Emb_" + str(i)): embedding_cols[i]}, inplace=True)
 
-    df_merged.to_sql('df_merged', conn, index=False, if_exists='replace')
-    df_horse_jockey_embeddings.to_sql('horse_jockey', conn, index=False, if_exists='replace')    
+    df_merged = pd.merge(df_merged, df_horse_jockey_embeddings,
+                         left_on=['Jockey', 'Date'],
+                         right_on=['Target_Feature', 'Date'],
+                         how='left',
+                         suffixes=('', '_z'))
 
-    jockey_field_names = ", ".join(embedding_cols)
-    print(f"jockey_field_names: {jockey_field_names}")
-    
-    sql_str = """
-        SELECT 
-            r.*,
-            {{jockey_field_names}} 
-        FROM
-            df_merged as r
-            left join horse_jockey as hj
-            on r.Date between hj.Date_Begin and hj.Date_End
-            and r.Horse = hj.Target_Feature
-    """
-
-    sql_str = sql_str.replace("{{horse_field_names}}", horse_field_names)
-
-    df_merged = pd.read_sql_query(sql_str, conn)
+    df_merged.drop(columns=['Target_Feature_y', 
+                            'Target_Feature_z',
+                            'Date_y',
+                            'Date_z'], 
+                            inplace=True, errors='ignore')
 
     print(f"df_merged: {len(df_merged)}")
 
@@ -235,26 +199,48 @@ def merge_horse_jockey_embeddings() -> pd.DataFrame:
 
 
 
-def get_ml_training_data(list_tr: List[str] ) -> pd.DataFrame:
+def build_ml_training_data():
     """
     Returns a DataFrame with the training data for machine learning models.
     """
 
+    df_race = get_race_dataset(start_date='2019-01-01', end_date='2025-12-31')
+    original_cols = df_race.columns.tolist()
+
+    
     df = get_race_data_with_trailing_stats(groupby='Horse')
+
+
+    list_tr = ['TR1', 'TR3', 'TR7', 'TR10']
+    
     cols = df.columns.tolist()
     trailing_avg_cols = [col for col in cols if col[-3:] in list_tr\
                           and 'Placing' in col\
                           and ('Score range' in col\
                           or 'DistanceMeterAsStr' in col)]
 
-    # !!!!!!!!Need to remove unwanted columns!!!!!!!!!
+    df_merged = merge_horse_jockey_embeddings(df)
 
-    return_cols = trailing_avg_cols
+    cols = df_merged.columns.tolist()
+    embedding_cols = [col for col in cols if col[0:6] in ['H_Emb_', 'J_Emb_']]
 
-    # print(df[return_cols].head(10))
-    # print(return_cols)
-    # print(f"Total rows in dataset after: {len(df)}")
-    return df[return_cols]
+    return_cols = original_cols + trailing_avg_cols + embedding_cols
+    script_dir = os.path.dirname(os.path.abspath(__file__)) 
+    file_path = os.path.join(script_dir, f"../data/ml_dataset_2019_2025.csv")
+    df_merged[return_cols].to_csv(file_path, index=False)
+
+
+def get_ml_training_data() -> pd.DataFrame:
+    return pd.read_csv('./data/ml_dataset_2019_2025.csv')
+
+
+
+
+    
+
+
+
+build_ml_training_data()
 
 
 # trs = ['TR3']
@@ -267,11 +253,58 @@ def get_ml_training_data(list_tr: List[str] ) -> pd.DataFrame:
 # print(data.head(10))
 
 
-trs = ['TR1', 'TR2', 'TR3', 'TR4', 
-      'TR5', 'TR6', 'TR7', 'TR8', 
-      'TR9', 'TR10', 'TR11', 'TR12']
-df_race = get_ml_training_data(list_tr=trs)
+# trs = ['TR1', 'TR2', 'TR3', 'TR4', 
+#       'TR5', 'TR6', 'TR7', 'TR8', 
+#       'TR9', 'TR10', 'TR11', 'TR12']
+# df_race = get_ml_training_data(list_tr=trs)
 
-data = merge_horse_jockey_embeddings()
-print(len(data))
-print(data.head(10))
+# data = merge_horse_jockey_embeddings()
+# print(len(data))
+# print(data.head(10))
+
+
+
+
+
+
+        # 'Unnamed: 13', # data is only know during the race, ie. data leakage
+        # 'race_wins', # data is only know during the race, ie. data leakage
+        # 'first_place_win', # data is only know during the race, ie. data leakage
+        # 'second_place_win', # data is only know during the race, ie. data leakage
+        # 'third_place_win', # data is only know during the race, ie. data leakage
+        # 'Race Index', # data is only know during the race, ie. data leakage
+        # 'Race Sub Index', # data is only know during the race, ie. data leakage
+        # 'Rtg.', # data is only know during the race, ie. data leakage
+        
+        
+        # 'Total Stakes', # useless, doesn't reflect the current state of the horse
+        # 'Age', # useless, doesn't reflect the current state of the horse 
+        #  # (always current age, does not reflect age at time of race)
+        # 'No. of 1-2-3-Starts', # does not reflect the true value at time of race
+        # 'No. of starts in past 10 race meetings', 
+        # 'Current Stable Location (Arrival Date)', 
+        # 'LBW', # distance from winning horse, ie. data leakage
+        # 'Comment', "useless"
+        # 'Last Rating For Retired', "useless"
+        # 'Start of Season Rating', "useless"
+        # 'Current Rating', "useless"
+        # 'Season Stakes', # useless, doesn't reflect the current state of the horse
+        # 'Time 1', # data is only know during the race, ie. data leakage
+        # 'Time 2', # data is only know during the race, ie. data leakage
+        # 'Time 3', # data is only know during the race, ie. data leakage
+        # 'Time 4', # data is only know during the race, ie. data leakage
+        # 'Time 5', # data is only know during the race, ie. data leakage
+        # 'Time 6', # data is only know during the race, ie. data leakage
+        # 'Sectional Time 1', # data is only know during the race, ie. data leakage
+        # 'Sectional Time 2', # data is only know during the race, ie. data leakage
+        # 'Sectional Time 3', # data is only know during the race, ie. data leakage
+        # 'Sectional Time 4', # data is only know during the race, ie. data leakage
+        # 'Sectional Time 5', # data is only know during the race, ie. data leakage
+        # 'Sectional Time 6', # data is only know during the race, ie. data leakage
+        # 'Running Position', # data is only know during the race, ie. data leakage
+        # 'RunningPosition1', # data is only know during the race, ie. data leakage
+        # 'RunningPosition2', # data is only know during the race, ie. data leakage
+        # 'RunningPosition3',# data is only know during the race, ie. data leakage
+        # 'RunningPosition4', # data is only know during the race, ie. data leakage
+        # 'RunningPosition5', # data is only know during the race, ie. data leakage
+        # 'RunningPosition6', # data is only know during the race, ie. data leakage

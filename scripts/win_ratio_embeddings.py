@@ -182,6 +182,8 @@ def create_race_embeddings(dict_win_ratio: defaultdict[any, float] = None)\
     return best_embedding
 
 
+
+
 start_time = datetime.now()
 print("Process started: ", start_time.strftime('%Y-%m-%d %H:%M:%S'))
 number_of_trailing_days = 1967 # last two years of data

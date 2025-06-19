@@ -13,8 +13,8 @@ import random
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import mean_absolute_error
 
-trs = ['']
-df_data = qr.get_ml_training_data(trs)
+
+df_data = qr.get_ml_training_data()
 
 
 # 'Date',
@@ -33,8 +33,98 @@ drop_cols = [
              'Import Type',
              'Handicap'
              ]
-df_encoded = df_data.drop(columns=drop_cols, errors='ignore')
 
+
+keep_cols = [
+            'Date', 
+            'RaceNumber', 
+            'Horse',
+            'Placing',
+             'Act. Wt.',
+             'Declar. Horse Wt.',
+             'DistanceMeter',
+            "Score range_85-60 Placing Value TR1",
+            "Score range_85-60 Placing Value TR3",
+            "Score range_85-60 Placing Value TR7",
+            "Score range_100-75 Placing Value TR1",
+            "Score range_100-75 Placing Value TR3",
+            "Score range_100-75 Placing Value TR7",
+            "Score range_80-60 Placing Value TR1",
+            "Score range_80-60 Placing Value TR3",
+            "Score range_80-60 Placing Value TR7",
+            "Score range_60-35 Placing Value TR1",
+            "Score range_60-35 Placing Value TR3",
+            "Score range_60-35 Placing Value TR7",
+            "Score range_115-90 Placing Value TR1",
+            "Score range_115-90 Placing Value TR3",
+            "Score range_115-90 Placing Value TR7",
+            "Score range_95+ Placing Value TR1",
+            "Score range_95+ Placing Value TR3",
+            "Score range_95+ Placing Value TR7",
+            "Score range_100-80 Placing Value TR1",
+            "Score range_100-80 Placing Value TR3",
+            "Score range_100-80 Placing Value TR7",
+            "Score range_95-75 Placing Value TR1",
+            "Score range_95-75 Placing Value TR3",
+            "Score range_95-75 Placing Value TR7",
+            "Score range_40-0 Placing Value TR1",
+            "Score range_40-0 Placing Value TR3",
+            "Score range_40-0 Placing Value TR7",
+            "Score range_105-80 Placing Value TR1",
+            "Score range_105-80 Placing Value TR3",
+            "Score range_105-80 Placing Value TR7",
+            "Score range_85+ Placing Value TR1",
+            "Score range_85+ Placing Value TR3",
+            "Score range_85+ Placing Value TR7",
+            "Score range_110-85 Placing Value TR1",
+            "Score range_110-85 Placing Value TR3",
+            "Score range_110-85 Placing Value TR7",
+            "Score range_90+ Placing Value TR1",
+            "Score range_90+ Placing Value TR3",
+            "Score range_90+ Placing Value TR7",
+            "Score range_90-70 Placing Value TR1",
+            "Score range_90-70 Placing Value TR3",
+            "Score range_90-70 Placing Value TR7",
+            "Score range_80-55 Placing Value TR1",
+            "Score range_80-55 Placing Value TR3",
+            "Score range_80-55 Placing Value TR7",
+            "Score range_60-40 Placing Value TR1",
+            "Score range_60-40 Placing Value TR3",
+            "Score range_60-40 Placing Value TR7",
+            "DistanceMeterAsStr_1200.0 Placing Value TR1",
+            "DistanceMeterAsStr_1200.0 Placing Value TR3",
+            "DistanceMeterAsStr_1200.0 Placing Value TR7",
+            "DistanceMeterAsStr_1600.0 Placing Value TR1",
+            "DistanceMeterAsStr_1600.0 Placing Value TR3",
+            "DistanceMeterAsStr_1600.0 Placing Value TR7",
+            "DistanceMeterAsStr_1800.0 Placing Value TR1",
+            "DistanceMeterAsStr_1800.0 Placing Value TR3",
+            "DistanceMeterAsStr_1800.0 Placing Value TR7",
+            "DistanceMeterAsStr_1000.0 Placing Value TR1",
+            "DistanceMeterAsStr_1000.0 Placing Value TR3",
+            "DistanceMeterAsStr_1000.0 Placing Value TR7",
+            "DistanceMeterAsStr_2000.0 Placing Value TR1",
+            "DistanceMeterAsStr_2000.0 Placing Value TR3",
+            "DistanceMeterAsStr_2000.0 Placing Value TR7",
+            "DistanceMeterAsStr_1400.0 Placing Value TR1",
+            "DistanceMeterAsStr_1400.0 Placing Value TR3",
+            "DistanceMeterAsStr_1400.0 Placing Value TR7",
+            "DistanceMeterAsStr_2200.0 Placing Value TR1",
+            "DistanceMeterAsStr_2200.0 Placing Value TR3",
+            "DistanceMeterAsStr_2200.0 Placing Value TR7",
+            "DistanceMeterAsStr_2400.0 Placing Value TR1",
+            "DistanceMeterAsStr_2400.0 Placing Value TR3",
+            "DistanceMeterAsStr_2400.0 Placing Value TR7",
+            "DistanceMeterAsStr_1650.0 Placing Value TR1",
+            "DistanceMeterAsStr_1650.0 Placing Value TR3",
+            "DistanceMeterAsStr_1650.0 Placing Value TR7"
+
+
+             ]
+
+# df_encoded = df_data.drop(columns=drop_cols, errors='ignore')
+
+df_encoded = df_data[keep_cols]
 
 df_races = df_encoded[['Date', 'RaceNumber']].drop_duplicates()
 df_sample_races = df_races.sample(frac=0.20, random_state=777, replace=False)
@@ -43,8 +133,8 @@ df_train = df_merged[df_merged['_merge'] == 'left_only'].drop('_merge', axis=1)
 df_test = pd.merge(df_encoded, df_sample_races, on =['Date', 'RaceNumber'], how='right', indicator=True)
 
 # print(len(df_train), len(df_test), len(df_encoded), len(df_train) + len(df_test))
-X_train = df_train.drop(columns=['Placing', 'Finish Time In Seconds'])
-X_test = df_test.drop(columns=['Placing', 'Finish Time In Seconds', '_merge'])
+X_train = df_train.drop(columns=['Placing'])
+X_test = df_test.drop(columns=['Placing', '_merge'])
 y_train = df_train['Placing']
 y_test = df_test['Placing']
 # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=777)
@@ -72,8 +162,15 @@ params = {
     # 'tree_method': 'gpu_hist',  # Use GPU for training
     # 'predictor': 'gpu_predictor',  # Use GPU for prediction
     'eval_metric': 'mlogloss',
+
+    'max_depth': 5,
+    'min_child_weight': 3,
+    'gamma': 0.1,
+    'subsample': 0.8,
+
+
     'n_estimators': 100,
-    'learning_rate': 0.1,
+    'learning_rate': 0.15,
 }
 print('Training XGBoost model with GPU support...')
 model = xgb.train(params, dtrain, num_boost_round=100)
@@ -94,17 +191,16 @@ print('finished')
 print('y_test', type(y_test))
 print('preds', type(preds))
 
-# df_merged = df_merged[df_merged['Actual Placing'] >= 3].sort_values(by=['Date', 'RaceNumber'], ascending=[True, True])
+df_merged = df_merged[df_merged['Actual Placing'] >= 3].sort_values(by=['Date', 'RaceNumber'], ascending=[True, True])
 
-# df_merged['Predicted Placing Rank'] = df_merged['Predicted Placing Rank'].apply(lambda x: 1 if not pd.isna(x) and x >= 3 else 0)
-# df_merged['Actual Placing'] = df_merged['Actual Placing'].apply(lambda x: 1 if not pd.isna(x) and x >= 3 else 0)
+df_merged['Predicted Placing Rank'] = df_merged['Predicted Placing Rank'].apply(lambda x: 1 if not pd.isna(x) and x >= 3 else 0)
+df_merged['Actual Placing'] = df_merged['Actual Placing'].apply(lambda x: 1 if not pd.isna(x) and x >= 3 else 0)
+
+print("After filtering for actual placing >= 3:")
+print(df_merged[['Horse', 'Date', 'RaceNumber', 'Actual Placing', 'Predicted Placing', 'Predicted Placing Rank']].sort_values(by=['Date','RaceNumber','Predicted Placing Rank'], ascending=[True,True,True]).head(24))
 
 mean_absolute_error = mean_absolute_error(df_merged['Actual Placing'], 
                           df_merged['Predicted Placing Rank'])
-
-
-for col in X_train_drop.columns:
-    print(f'{col}: {X_train_drop[col].dtype}')
 
 print(f'mean_absolute_error: {mean_absolute_error:.2f}')
 
