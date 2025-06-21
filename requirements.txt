@@ -7,5 +7,6 @@ selenium
 openpyxl
 html5lib
 scikit-learn
+tqdm
 xgboost
 matplotlib
