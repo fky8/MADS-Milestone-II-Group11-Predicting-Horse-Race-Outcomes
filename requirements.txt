@@ -8,4 +8,4 @@ openpyxl
 html5lib
 scikit-learn
 xgboost
-db-sqlite3
+matplotlib

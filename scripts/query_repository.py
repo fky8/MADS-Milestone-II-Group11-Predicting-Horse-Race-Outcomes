@@ -82,8 +82,6 @@ def get_race_dataset(start_date='2019-01-01', end_date='2025-12-31'):
 
     return df_filtered[(df_filtered['Date'] >= start_date) & (df_filtered['Date'] <= end_date)]
 
-
-
 def get_trailing_average_win_stats(groupby: str ='Horse', 
                                    metric_grouping: str ='Score range')\
                                    -> pd.DataFrame:
@@ -101,6 +99,24 @@ def get_trailing_average_win_stats(groupby: str ='Horse',
         print("File not found. Please ensure the dataset is available at the specified path.")
         return pd.DataFrame()
     
+    return df
+
+
+def get_trailing_placing_averages(groupby: str ='Horse') -> pd.DataFrame:
+    """
+    Pre calculated trailing average win stats by:
+    groupby: 'Horse', 'Jockey'
+    metric_grouping: 'Score range', 'Going', 'DistanceMeterAsStr', Dr.
+    
+    """
+
+    try:
+        df = pd.read_csv(f"./data/{groupby}_trailing_placing_averages.csv")
+        df['Date'] = pd.to_datetime(df['Date'])
+    except FileNotFoundError:
+        print("File not found. Please ensure the dataset is available at the specified path.")
+        return pd.DataFrame()
+
     return df
 
 def get_race_data_with_trailing_stats(groupby: str ='Horse') -> pd.DataFrame:
@@ -139,14 +155,46 @@ def get_race_data_with_trailing_stats(groupby: str ='Horse') -> pd.DataFrame:
     df_merged = pd.merge(df_merged, df_trailing_distance, on=[groupby, 'DistanceMeterAsStr', 'Date'], how='left', suffixes=('', '_y'))            
     drop_cols = [col for col in df_merged.columns if col[-2:] == '_y']
     df_merged = df_merged.drop(columns=drop_cols, errors='ignore')
+
+
+    df_trailing_placing_averages = get_trailing_placing_averages(groupby=groupby)
+    df_merged = pd.merge(df_merged, df_trailing_placing_averages, on=[groupby, 'Date'], how='left', suffixes=('', '_z'))            
+    drop_cols = ['Date_z', 'Horse_z', 'Jockey_z', 'Placing_z']
+    df_merged = df_merged.drop(columns=drop_cols, errors='ignore')
     
+
     df_merged = df_merged.sort_values(by=[groupby, 'Date'], ascending=[True, True])     
 
     return df_merged
 
-
-
 def merge_horse_jockey_embeddings(df_trailing_stats: pd.DataFrame) -> pd.DataFrame:
+    """
+    Merges horse jockey co-ocurrence embedding into 
+    race data with trailing stats.
+    """
+    # ['Horse', 'Jockey', 'Date', 'RaceNumber']    
+    df_horse_jockey_embeddings = pd.read_csv('./data/Jockey_Jockey_Embeddings_540_flat.csv')
+    df_horse_jockey_embeddings['Date'] = pd.to_datetime(df_horse_jockey_embeddings['Date'])
+    df_horse_jockey_embeddings.rename(columns={'Target Feature': 'Target_Feature'}, inplace=True)    
+
+    df_merged = pd.merge(df_trailing_stats, df_horse_jockey_embeddings,
+                         left_on=['Jockey', 'Date'],
+                         right_on=['Target_Feature', 'Date'],
+                         how='left',
+                         suffixes=('', ''))
+
+    df_merged.drop(columns=['Target_Feature_y', 
+                            'Target_Feature_z',
+                            'Date_y',
+                            'Date_z'], 
+                            inplace=True, errors='ignore')
+
+    print(f"df_merged: {len(df_merged)}")
+
+    return df_merged
+
+
+def merge_jockey_jockey_embeddings(df_trailing_stats: pd.DataFrame) -> pd.DataFrame:
     """
     Merges horse jockey co-ocurrence embedding into 
     race data with trailing stats.
@@ -154,36 +202,23 @@ def merge_horse_jockey_embeddings(df_trailing_stats: pd.DataFrame) -> pd.DataFra
 
     df_trailing_stats = get_race_data_with_trailing_stats(groupby='Horse')
     # ['Horse', 'Jockey', 'Date', 'RaceNumber']    
-    df_horse_jockey_embeddings = pd.read_csv('./data/Horse_Jockey_Embeddings_180.csv')
-    df_horse_jockey_embeddings['Date'] = pd.to_datetime(df_horse_jockey_embeddings['Date'])
+    df_horse_jockey_embeddings = pd.read_csv('./data/Jockey_Jockey_Embeddings_540_flat.csv')
+    # df_horse_jockey_embeddings['Date'] = pd.to_datetime(df_horse_jockey_embeddings['Date'])
     df_horse_jockey_embeddings.rename(columns={'Target Feature': 'Target_Feature'}, inplace=True)    
-
-    # print('df_horse_jockey_embeddings', df_horse_jockey_embeddings.dtypes)
-    # print('df_trailing_stats', df_trailing_stats.dtypes)
 
 
     embedding_cols = df_horse_jockey_embeddings.columns.tolist()
     embedding_cols = [col for col in embedding_cols if col not in\
-                       ['Target_Feature', 'Date']]
+                       ['Target_Feature', 'Date', 'Date Begin', 'Date End']]
     
     for i in range(len(embedding_cols)):
-        embedding_cols[i] = "H_Emb_" + str(embedding_cols[i]) 
+        embedding_cols[i] = "J_Emb_" + str(embedding_cols[i]) 
         df_horse_jockey_embeddings.rename(columns={str(i): embedding_cols[i]}, inplace=True)
 
+
     df_merged = pd.merge(df_trailing_stats, df_horse_jockey_embeddings,
-                         left_on=['Horse', 'Date'],
-                         right_on=['Target_Feature', 'Date'],
-                         how='left',
-                         suffixes=('', '_y'))
-
-
-    for i in range(len(embedding_cols)):
-        embedding_cols[i] = "J_Emb_" + str(embedding_cols[i]) 
-        df_horse_jockey_embeddings.rename(columns={str("H_Emb_" + str(i)): embedding_cols[i]}, inplace=True)
-
-    df_merged = pd.merge(df_merged, df_horse_jockey_embeddings,
-                         left_on=['Jockey', 'Date'],
-                         right_on=['Target_Feature', 'Date'],
+                         left_on=['Jockey'],
+                         right_on=['Target_Feature'],
                          how='left',
                          suffixes=('', '_z'))
 
@@ -196,6 +231,36 @@ def merge_horse_jockey_embeddings(df_trailing_stats: pd.DataFrame) -> pd.DataFra
     print(f"df_merged: {len(df_merged)}")
 
     return df_merged
+
+
+def merge_horse_embeddings(df_trailing_stats: pd.DataFrame) -> pd.DataFrame:
+    """
+    Merges horse jockey co-ocurrence embedding into 
+    race data with trailing stats.
+    """
+
+
+    # ['Horse', 'Jockey', 'Date', 'RaceNumber']    
+    df_horse_embeddings = pd.read_csv('./data/Horse_Horse_Embeddings_180_flat.csv')
+    df_horse_embeddings['Date'] = pd.to_datetime(df_horse_embeddings['Date'])
+    df_horse_embeddings.rename(columns={'Target Feature': 'Target_Feature'}, inplace=True)    
+
+
+    df_merged = pd.merge(df_trailing_stats, df_horse_embeddings,
+                         left_on=['Horse', 'Date'],
+                         right_on=['Target_Feature', 'Date'],
+                         how='left',
+                         suffixes=('', '_z'))
+
+    df_merged.drop(columns=['Target_Feature_y', 
+                            'Target_Feature_z',
+                            'Date_y',
+                            'Date_z'], 
+                            inplace=True, errors='ignore')
+
+    return df_merged
+
+
 
 
 
@@ -211,7 +276,10 @@ def build_ml_training_data():
     df = get_race_data_with_trailing_stats(groupby='Horse')
 
 
-    list_tr = ['TR1', 'TR3', 'TR7', 'TR10']
+    list_tr = ['TR1','TR2','TR3','TR4','TR5']
+    list_tr2 = ['Placing_TR1','Placing_TR2','Placing_TR3','Placing_TR4',
+                'Placing_TR5','Placing_TR6','Placing_TR7','Placing_TR8',''
+                'Placing_TR9','Placing_TR10'] 
     
     cols = df.columns.tolist()
     trailing_avg_cols = [col for col in cols if col[-3:] in list_tr\
@@ -219,12 +287,18 @@ def build_ml_training_data():
                           and ('Score range' in col\
                           or 'DistanceMeterAsStr' in col)]
 
+    trailing_avg_cols2 = [col for col in cols if col in list_tr2]
+
+
     df_merged = merge_horse_jockey_embeddings(df)
+    # df_merged = merge_jockey_jockey_embeddings(df)
+
+    df_merged = merge_horse_embeddings(df_merged)
 
     cols = df_merged.columns.tolist()
     embedding_cols = [col for col in cols if col[0:6] in ['H_Emb_', 'J_Emb_']]
 
-    return_cols = original_cols + trailing_avg_cols + embedding_cols
+    return_cols = original_cols + trailing_avg_cols + trailing_avg_cols2 + embedding_cols
     script_dir = os.path.dirname(os.path.abspath(__file__)) 
     file_path = os.path.join(script_dir, f"../data/ml_dataset_2019_2025.csv")
     df_merged[return_cols].to_csv(file_path, index=False)
@@ -235,12 +309,8 @@ def get_ml_training_data() -> pd.DataFrame:
 
 
 
-
-    
-
-
-
-# build_ml_training_data()
+if __name__ == "__main__":
+    build_ml_training_data()
 
 
 # trs = ['TR3']

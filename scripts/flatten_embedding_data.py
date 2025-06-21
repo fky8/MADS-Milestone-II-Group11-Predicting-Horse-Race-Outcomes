@@ -19,7 +19,7 @@ import os
 import pandas as pd
 from datetime import datetime, timedelta
 
-df = pd.read_csv('./data/Horse_Jockey_Embeddings.csv')
+df = pd.read_csv('./data/Horse_Horse_Embeddings_180.csv')
 
 list_dates = df['Date End'].unique().tolist()[::-1]
 
@@ -31,19 +31,20 @@ for date in list_dates:  # Limiting to first 10 dates for demonstration
         # next_date = datetime.strptime(date, '%Y-%m-%d') - timedelta(days=i)
         new_date = pd.to_datetime(date) + timedelta(days=i)
         print(f"Processing date: {new_date.strftime('%Y-%m-%d')}")
-        print(f"Processing date: {pd.to_datetime(date).strftime('%Y-%m-%d')}")
-        df_next = df[df['Date End'] == pd.to_datetime(date).strftime('%#m/%#d/%Y')]
-
-        df_next.drop(columns=['Date End', 'Date Begin', 'Trailing Days'], inplace=True, errors='ignore')
+        print(f"Processing end date: {pd.to_datetime(date).strftime('%Y-%m-%d')}")
+        df_next = df[df['Date End'] == pd.to_datetime(date).strftime('%Y-%m-%d')]
+        df_next.drop(columns=['Date End', 'Date Begin'], inplace=True, errors='ignore')
         df_next['Date'] = new_date
+        
         list_dfs.append(df_next)
 
 
 df_flattened = pd.concat(list_dfs, ignore_index=True)
 df_flattened = df_flattened.sort_values(by=['Date'], ascending=True)
 
-
+for i in range(0, 50):
+    df_flattened.rename(columns={f'{str(i)}': f'H_Emb_{str(i)}'}, inplace=True, errors='ignore')
 
 script_dir = os.path.dirname(os.path.abspath(__file__)) 
-file_path = os.path.join(script_dir, f"../data/Horse_Jockey_Embeddings_180.csv")
+file_path = os.path.join(script_dir, f"../data/Horse_Horse_Embeddings_180_flat.csv")
 df_flattened.to_csv(file_path, index=False)
