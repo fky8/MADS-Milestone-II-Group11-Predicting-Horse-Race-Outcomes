@@ -181,15 +181,12 @@ def create_trailing_average_win_stats(groupby='Horse'):
     df_encoded_new.to_csv(file_path, index=False)
 
 
+if __name__ == "__main__":
+    # groupby_columns = ['Horse', 'Jockey']
+    # groupby_columns = ['Jockey']
+    # metrics = ['Dr.', 'DistanceMeterAsStr', 'Score range', 'Going']
 
-# groupby_columns = ['Horse', 'Jockey']
-# groupby_columns = ['Jockey']
-# metrics = ['Dr.', 'DistanceMeterAsStr', 'Score range', 'Going']
-
-# for col in groupby_columns:
-#     for metric in metrics:
-#         create_trailing_average_win_stats_group_by(col, metric)
-
-
-
-create_trailing_average_win_stats(groupby='Horse')
+    # for col in groupby_columns:
+    #     for metric in metrics:
+    #         create_trailing_average_win_stats_group_by(col, metric)
+    create_trailing_average_win_stats(groupby='Horse')
