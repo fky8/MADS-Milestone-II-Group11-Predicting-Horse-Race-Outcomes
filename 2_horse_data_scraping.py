@@ -6,7 +6,10 @@ from urllib.parse import urljoin
 import pandas as pd
 import re
 
-OUTPUT_CSV   = "hkjc_horse_profiles.csv"
+DATA_DIR = os.path.join("data", "horse_specifc_data")
+OUTPUT_CSV = os.path.join(DATA_DIR, "hkjc_horse_profiles.csv")
+INACTIVE_CSV = os.path.join(DATA_DIR, "inactive_horses.csv")
+INACTIVE_PROFILES_CSV = os.path.join(DATA_DIR, "inactive_horses_profiles.csv")
 BASE_DOMAIN  = "https://racing.hkjc.com"
 
 # --- Active Horse Scraping ---
@@ -214,7 +217,7 @@ def scrape_inactive_horses():
     # Load active horse indices
     active_horse_df = pd.read_csv(OUTPUT_CSV)
     # Load race data and extract HorseIndex and year
-    df = pd.read_csv("RacePlaceData_2010_2025.csv")
+    df = pd.read_csv(os.path.join("data", "race", "RacePlaceData_2010_2025.csv"))
     df = df[['Horse','Date']]
     df['HorseIndex'] = df['Horse'].str.extract(r'\(([^)]+)\)')
     df['Horse'] = df['Horse'].str.replace(r'\s*\([^)]*\)', '', regex=True)
@@ -231,7 +234,8 @@ def scrape_inactive_horses():
     df = df[~df['Horse'].isin(active_horse_df['HorseName'])]
     # After extracting HorseIndex, keep only the last 4 alphanumeric characters
     df['HorseIndex'] = df['HorseIndex'].astype(str).str.replace(r'\W', '', regex=True).str[-4:]
-    df.to_csv("inactive_horses.csv", index=False)
+    os.makedirs(DATA_DIR, exist_ok=True)
+    df.to_csv(INACTIVE_CSV, index=False)
     print(f"Inactive horses to scrape: {len(df)}")
     results = []
     for _, row in df.iterrows():
@@ -259,7 +263,7 @@ def scrape_inactive_horses():
     if results:
         all_profiles_df = pd.concat(results, ignore_index=True)
         print(f"Scraped {len(all_profiles_df)} inactive horse profiles.")
-        all_profiles_df.to_csv("inactive_horses_profiles.csv", index=False)
+        all_profiles_df.to_csv(INACTIVE_PROFILES_CSV, index=False)
         return all_profiles_df
     else:
         print("No inactive horse profiles scraped.")
@@ -303,9 +307,6 @@ def main():
 
 # %%
     # 3. Merge and save all profiles
-    # import pandas as pd
-    # df_active = pd.read_csv(OUTPUT_CSV)
-    # df_inactive = pd.read_csv("inactive_horses_profiles.csv")
     if not df_inactive.empty:
         merged = pd.concat([df_active, df_inactive], ignore_index=True)
         merged = merged.drop_duplicates(subset=["HorseIndex"], keep="first")
