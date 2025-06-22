@@ -2,31 +2,51 @@
 import pandas as pd
 import numpy as np
 import re
+import os
 
 def clean_column_names(df):
+    """
+    Remove columns that start with 'Unnamed' (often created by pandas when saving CSVs with index).
+    """
     return df.loc[:, ~df.columns.str.startswith('Unnamed')]
 
 def standardize_columns(race_df, gear_df, horse_df):
+    """
+    Standardize column names across different data sources for easier merging.
+    """
     race_df.rename(columns={'Pla.': 'Placing'}, inplace=True)
     gear_df.rename(columns={'Horse No': 'Horse No.', 'Horse Name': 'Horse'}, inplace=True)
     horse_df.rename(columns={'HorseName': 'Horse'}, inplace=True)
     return race_df, gear_df, horse_df
 
 def extract_indices(df, col='Horse'):
+    """
+    Extract the horse index from the horse name (e.g., "HorseName (123)" → index 123)
+    and remove the index from the horse name.
+    """
     df['HorseIndex'] = df[col].str.extract(r'\(([^)]+)\)')
     df[col] = df[col].str.replace(r'\s*\([^)]*\)', '', regex=True)
     return df
 
 def parse_dates(df, col='Date', fmt='%Y/%m/%d'):
+    """
+    Parse the date column into pandas datetime objects.
+    """
     df[col] = pd.to_datetime(df[col], errors='coerce')
     return df
 
 def convert_int_columns(df, cols):
+    """
+    Convert specified columns to integer type, handling errors gracefully.
+    """
     for col in cols:
         df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
     return df
 
 def split_running_position_columns(df, source_col='Running Position'):
+    """
+    Split the 'Running Position' column (space-separated string) into multiple columns.
+    """
     running_pos_cols = [f'RunningPosition{i}' for i in range(1, 7)]
     df[running_pos_cols] = df[source_col].astype(str).str.split(' ', n=5, expand=True)
     for col in running_pos_cols:
@@ -34,6 +54,10 @@ def split_running_position_columns(df, source_col='Running Position'):
     return df
 
 def split_score_range(val):
+    """
+    Split the 'Score range' column into MinScore and MaxScore.
+    Handles formats like '80-60', '80+', or '80'.
+    """
     if pd.isna(val) or str(val).strip() == '':
         return pd.Series({'MinScore': np.nan, 'MaxScore': np.nan})
     val = str(val).strip()
@@ -53,20 +77,24 @@ def split_score_range(val):
     return pd.Series({'MinScore': np.nan, 'MaxScore': np.nan})
 
 def main():
+    """
+    Main function to clean and merge race, horse, and gear/comment data.
+    Produces two output CSVs: one for 2010-2018 and one for 2019-2025.
+    """
     # 1. Read data
-    race_df = pd.read_csv("RacePlaceData_2010_2025.csv")
-    horse_df = pd.read_csv("hkjc_horse_profiles.csv")
-    gear_df = pd.read_csv("comments_2010_to_2025_combined.csv")
+    race_df = pd.read_csv(os.path.join("data", "race", "RacePlaceData_2010_2025.csv"))
+    horse_df = pd.read_csv(os.path.join("data", "horse_specifc_data", "hkjc_horse_profiles.csv"))
+    gear_df = pd.read_csv(os.path.join("data", "comments_2010_to_2025_combined.csv"))
 
     # 2. Clean column names
     race_df = clean_column_names(race_df)
     horse_df = clean_column_names(horse_df)
     gear_df = clean_column_names(gear_df)
 
-    # 3. Standardize columns
+    # 3. Standardize columns for merging
     race_df, gear_df, horse_df = standardize_columns(race_df, gear_df, horse_df)
 
-    # 4. Extract indices and clean names
+    # 4. Extract indices and clean horse names
     race_df = extract_indices(race_df)
     gear_df = extract_indices(gear_df)
 
@@ -78,7 +106,7 @@ def main():
     race_df = parse_dates(race_df, 'Date')
     gear_df = parse_dates(gear_df, 'Date')
 
-    # 7. Merge and feature engineering (as in your code)
+    # 7. Merge and feature engineering
     # Combine race and gear DataFrames by coalescing on keys
     keys = ['Date', 'RaceNumber', 'Horse No.']
     race_gear_df = (
@@ -87,11 +115,12 @@ def main():
         .reset_index()
     )
 
+    # Print number of matching rows for debugging
     common_idx = (race_df.set_index(keys)
                         .index.intersection(gear_df.set_index(keys).index))
     print(f"Matching rows: {len(common_idx)}")
 
-    # Combine race_gear_df and horse_df by coalescing on Horse (approach 4)
+    # Combine race_gear_df and horse_df by coalescing on Horse
     horse_profile = horse_df.set_index('Horse')
     race_full_df = (
         race_gear_df.set_index('Horse')
@@ -99,7 +128,7 @@ def main():
         .reset_index()
     )
 
-    # Sort race_full_df by Date, RaceNumber, and Placing
+    # Sort by Date, RaceNumber, and Placing
     race_full_df = race_full_df.sort_values(by=['Date', 'RaceNumber', 'Placing'])
 
     # Remove all dollar signs from string values in the DataFrame, excluding column names
@@ -115,8 +144,11 @@ def main():
     # Drop completely blank rows (all values are NaN)
     race_full_df = race_full_df.dropna(how='all')
 
-    # Add HorseCompetitor1 to HorseCompetitor13 columns
+    # Add HorseCompetitor1 to HorseCompetitor13 columns for each race
     def assign_competitors(group):
+        """
+        For each horse in a race, assign the indices of all other horses as competitors.
+        """
         horse_indices = group['HorseIndex'].tolist()
         for idx, row in group.iterrows():
             competitors = [h for h in horse_indices if h != row['HorseIndex']]
@@ -127,8 +159,11 @@ def main():
 
     race_full_df = race_full_df.groupby(['Date', 'RaceNumber'], group_keys=False).apply(assign_competitors)
 
-    # Add JockeyCompetitor1 to JockeyCompetitor13 columns
+    # Add JockeyCompetitor1 to JockeyCompetitor13 columns for each race
     def assign_jockeys(group):
+        """
+        For each horse in a race, assign the names of all other jockeys as competitors.
+        """
         jockeys = group['Jockey'].tolist()
         for idx, row in group.iterrows():
             competitors = [j for j in jockeys if j != row['Jockey']]
@@ -140,6 +175,9 @@ def main():
     race_full_df = race_full_df.groupby(['Date', 'RaceNumber'], group_keys=False).apply(assign_jockeys)
 
     def clean_lbw(val):
+        """
+        Clean the 'LBW' (Length Behind Winner) column, converting fractions and dashes to floats.
+        """
         if pd.isna(val) or str(val).strip() == '':
             return float('nan')
         val = str(val).strip()
@@ -161,10 +199,11 @@ def main():
         except Exception:
             return float('nan')
 
+    # Clean 'LBW' column if present
     if 'LBW' in race_full_df.columns:
         race_full_df['LBW'] = race_full_df['LBW'].apply(clean_lbw).astype(float)
 
-    # Clean and convert Distance column
+    # Clean and convert Distance column to integer meters
     if 'Distance' in race_full_df.columns:
         race_full_df = race_full_df.rename(columns={'Distance': 'DistanceMeter'})
         race_full_df['DistanceMeter'] = (
@@ -175,7 +214,7 @@ def main():
         )
         race_full_df['DistanceMeter'] = pd.to_numeric(race_full_df['DistanceMeter'], errors='coerce').astype('Int64')
 
-    # Split running position columns
+    # Split running position columns into separate columns
     race_full_df = split_running_position_columns(race_full_df)
 
     # Split score range if present
@@ -185,18 +224,26 @@ def main():
         score_split['MaxScore'] = pd.to_numeric(score_split['MaxScore'], errors='coerce').astype('Int64')
         race_full_df = pd.concat([race_full_df, score_split], axis=1)
 
+    # Calculate horse age at the time of each race
+    if 'Age' in race_full_df.columns and 'Date' in race_full_df.columns:
+        race_full_df['Age'] = pd.to_numeric(race_full_df['Age'], errors='coerce').astype('Int64')
+        race_full_df = race_full_df.rename(columns={'Age': 'Age at scraping'})
+        race_year = race_full_df['Date'].dt.year
+        race_full_df['Age at race'] = race_full_df['Age at scraping'] - (2025 - race_year)
+        race_full_df['Age at race'] = race_full_df['Age at race'].astype('Int64')
+
     # Rename "Last Rating" to "Last Rating For Retired" if it exists
     if "Last Rating" in race_full_df.columns:
         race_full_df = race_full_df.rename(columns={"Last Rating": "Last Rating For Retired"})
 
-    # Define your desired column order
+    # Define your desired column order for output
     desired_order = [
         "Placing","Horse No.","Horse","Jockey","Trainer","Act. Wt.","Declar. Horse Wt.","Dr.","LBW",
         "Win Odds","Date","Course","RaceNumber","Race type","DistanceMeter","Score range","MinScore","MaxScore",
         "Going","Handicap",
         "Course Detail","Time 1","Time 2","Time 3","Time 4","Time 5","Time 6","Sectional Time 1","Sectional Time 2",
         "Sectional Time 3","Sectional Time 4","Sectional Time 5","Sectional Time 6","Running Position","RunningPosition1","RunningPosition2","RunningPosition3",
-        "RunningPosition4","RunningPosition5","RunningPosition6","Finish Time","HorseIndex","Country","Age","Colour","Sex","Import Type","Season Stakes","Total Stakes","No. of 1-2-3-Starts",
+        "RunningPosition4","RunningPosition5","RunningPosition6","Finish Time","HorseIndex","Country","Age at scraping","Age at race","Colour","Sex","Import Type","Season Stakes","Total Stakes","No. of 1-2-3-Starts",
         "No. of starts in past 10 race meetings","Current Stable Location (Arrival Date)","Import Date","Owner",
         "Current Rating","Last Rating For Retired","Start of Season Rating","Sire","Dam","Dam's Sire","Same Sire","PP Pre-import races footage","Gear","Comment","B","B_first_time","B_replaced","B_removed","BO","BO_first_time","BO_replaced","BO_removed","CC","CC_first_time","CC_replaced","CC_removed","CP","CP_first_time","CP_replaced","CP_removed","CO",
         "CO_first_time","CO_replaced","CO_removed","E","E_first_time","E_replaced","E_removed","H","H_first_time","H_replaced",
@@ -217,11 +264,11 @@ def main():
     remaining_cols = [col for col in race_full_df.columns if col not in final_cols]
     race_full_df = race_full_df[final_cols + remaining_cols]
 
-    # Output
+    # Output: Save two CSVs for different year ranges
     mask_2010_2018 = (race_full_df['Date'] >= '2010-01-01') & (race_full_df['Date'] <= '2018-12-31')
     mask_2019_2025 = (race_full_df['Date'] >= '2019-01-01') & (race_full_df['Date'] <= '2025-12-31')
-    race_full_df.loc[mask_2010_2018].to_csv("Race_comments_gear_horse_competitors_2010_2018.csv", index=False)
-    race_full_df.loc[mask_2019_2025].to_csv("Race_comments_gear_horse_competitors_2019_2025.csv", index=False)
+    race_full_df.loc[mask_2010_2018].to_csv(os.path.join("data", "Race_comments_gear_horse_competitors_2010_2018.csv"), index=False)
+    race_full_df.loc[mask_2019_2025].to_csv(os.path.join("data", "Race_comments_gear_horse_competitors_2019_2025.csv"), index=False)
 
 if __name__ == "__main__":
     main()
