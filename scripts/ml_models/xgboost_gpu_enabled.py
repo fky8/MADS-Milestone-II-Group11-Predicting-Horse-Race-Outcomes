@@ -19,36 +19,83 @@ from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import GridSearchCV
 import matplotlib.pyplot as plt
 
-df_data = pd.read_csv('./data/ml_dataset_2019_2025.csv')
+df_data = pd.read_csv('./data/ml_dataset_2019_2025_20250521_480_train_60_test.csv')
+cols = df_data.columns.tolist()
+
+
+h_emb_cols = [col for col in cols if col[0:6] in ['J_Emb_']]
+j_emb_cols = [col for col in cols if col[0:6] in ['H_Emb_']]
+
+h_cols = ['Date', 'RaceNumber'] + h_emb_cols
+j_cols = ['Date', 'RaceNumber'] + j_emb_cols
+
+df_jockey = df_data[j_cols].copy()
+df_horse = df_data[h_cols].copy()
+
+# Append Average opponent embeddings
+df_jockey_grouped = df_jockey.groupby(['Date', 'RaceNumber']).mean().reset_index()
+for col in j_emb_cols:
+    df_jockey_grouped.rename(columns={col: col + '_mean'}, inplace=True)
+
+df_horse_grouped = df_horse.groupby(['Date', 'RaceNumber']).mean().reset_index()
+for col in h_emb_cols:
+    df_horse_grouped.rename(columns={col: col + '_mean'}, inplace=True)
+
+df_data = df_data.merge(df_jockey_grouped, on=['Date', 'RaceNumber'], how='left')
+df_data = df_data.merge(df_horse_grouped, on=['Date', 'RaceNumber'], how='left')
+
+
+# delta between opponent mean embedding and the horse/jockey embedding
+for col in j_emb_cols:
+    df_data[col + '_delta_mean'] = df_data[col] - df_data[col + '_mean']
+
+for col in h_emb_cols:
+    df_data[col + '_delta_mean'] = df_data[col] - df_data[col + '_mean']
+
+# Append Max opponent embeddings
+df_jockey_grouped = df_jockey.groupby(['Date', 'RaceNumber']).max().reset_index()
+for col in j_emb_cols:
+    df_jockey_grouped.rename(columns={col: col + '_max'}, inplace=True)
+
+df_horse_grouped = df_horse.groupby(['Date', 'RaceNumber']).max().reset_index()
+for col in h_emb_cols:
+    df_horse_grouped.rename(columns={col: col + '_max'}, inplace=True)
+
+df_data = df_data.merge(df_jockey_grouped, on=['Date', 'RaceNumber'], how='left')
+df_data = df_data.merge(df_horse_grouped, on=['Date', 'RaceNumber'], how='left')
+
+# delta between opponent mean embedding and the horse/jockey embedding
+for col in j_emb_cols:
+    df_data[col + '_delta_max'] = df_data[col] - df_data[col + '_max']
+
+for col in h_emb_cols:
+    df_data[col + '_delta_max'] = df_data[col] - df_data[col + '_max']
+
+
+# Append Max opponent embeddings
+df_jockey_grouped = df_jockey.groupby(['Date', 'RaceNumber']).min().reset_index()
+for col in j_emb_cols:
+    df_jockey_grouped.rename(columns={col: col + '_min'}, inplace=True)
+
+df_horse_grouped = df_horse.groupby(['Date', 'RaceNumber']).min().reset_index()
+for col in h_emb_cols:
+    df_horse_grouped.rename(columns={col: col + '_min'}, inplace=True)
+
+df_data = df_data.merge(df_jockey_grouped, on=['Date', 'RaceNumber'], how='left')
+df_data = df_data.merge(df_horse_grouped, on=['Date', 'RaceNumber'], how='left')
+
+# delta between opponent mean embedding and the horse/jockey embedding
+for col in j_emb_cols:
+    df_data[col + '_delta_min'] = df_data[col] - df_data[col + '_min']
+
+for col in h_emb_cols:
+    df_data[col + '_delta_min'] = df_data[col] - df_data[col + '_min']
+
+
 
 
 print(f"Number of rows in df_data: {len(df_data)}")
 df_data= df_data[df_data['J_Emb_0'].notna()]
-
-
-
-
-# df_data = df_data[df_data['DistanceMeterAsStr_1200.0 Placing Value TR1'].notna()]
-# df_data = df_data[df_data['Score range_60-40 Placing Value TR3'].notna()]
-# df_data = df_data[df_data['Score range_60-40 Placing Value TR1'].notna()]
-# mean_absolute_error: 0.26
-# Accuracy: 0.74
-# Precision: 0.45
-# Recall: 0.12
-
-# df_data = df_data[df_data['DistanceMeterAsStr_1650.0 Placing Value TR3'].notna()]
-# df_data = df_data[df_data['Score range_60-40 Placing Value TR1'].notna()]
-
-# df_data = df_data[df_data['DistanceMeterAsStr_1650.0 Placing Value TR1'].notna()]
-# df_data = df_data[df_data['Score range_80-60 Placing Value TR3'].notna()]
-# df_data = df_data[df_data['Score range_80-60 Placing Value TR1'].notna()]
-# df_data = df_data[df_data['J_Emb_H_Emb_1'].notna()]
-# df_data = df_data[df_data['J_Emb_H_Emb_39'].notna()]
-# df_data = df_data[df_data['J_Emb_H_Emb_49'].notna()]
-# df_data = df_data[df_data['J_Emb_H_Emb_2'].notna()]
-# df_data = df_data[df_data['J_Emb_H_Emb_44'].notna()]
-# df_data = df_data[df_data['J_Emb_H_Emb_3'].notna()]
-
 
 
 print(f"Number of rows in df_data after: {len(df_data)}")
@@ -61,11 +108,28 @@ keep_cols = [
             'Horse',
             'Placing',
             'top_three',
+            'Placing_TR1',	
+            'Placing_TR2',	
+            'Placing_TR3',	
             'Win Odds',
             'Dr.', 
+            # 'J_Emb_48_delta_max',
+            # 'J_Emb_47_delta_max',
+            # 'J_Emb_0_delta_max',
+            # 'J_Emb_1_delta_max',
+            # 'J_Emb_3_delta_max',
 
-            'H_Emb_10', 'H_Emb_28', 'J_Emb_48', 'J_Emb_13',
-            'Placing_TR10', 'Placing_TR9', 'Placing_TR2', 'Placing_TR1', 'Placing_TR8'
+            # 'J_Emb_21_delta_mean',
+            # 'J_Emb_24_delta_mean',
+
+            # 'H_Emb_21_delta_mean',
+            # 'H_Emb_25_delta_mean',
+
+            # 'H_Emb_46_delta_max',
+            # 'H_Emb_0_delta_max',
+
+            # 'H_Emb_49_delta_min', 
+
              ]
 
 numeric_cols = [
@@ -73,40 +137,71 @@ numeric_cols = [
             # 'Act. Wt.',
             # 'Declar. Horse Wt.',
             # 'DistanceMeter',
-            # 'Placing_TR1',	
-            # 'Placing_TR2',	
-            # 'Placing_TR3',	
-            # 'Placing_TR4',	
-            # 'Placing_TR5',	
-            # 'Placing_TR6',	
-            # 'Placing_TR7',	
-            # 'Placing_TR8',	
-            # 'Placing_TR9',	
-            # 'Placing_TR10',
+            'Placing_TR1',	
+            'Placing_TR2',	
+            'Placing_TR3',	
+            'Placing_TR4',	
+            'Placing_TR5',	
+            'Placing_TR6',	
+            'Placing_TR7',	
+            'Placing_TR8',	
+            'Placing_TR9',	
+            'Placing_TR10',
 ]
 
 cols = df_data.columns.tolist()
 
 embedding_cols = []
-embedding_cols = [col for col in cols if col[0:6] in ['H_Emb_', 'J_Emb_']]
+embedding_cols = h_emb_cols + j_emb_cols
 # embedding_cols = [col for col in cols if col[0:6] in ['H_Emb_']]
 
-trailing_avg_cols = []
-# list_tr = ['TR1','TR2','TR3','TR4','TR5']
-# trailing_avg_cols = [col for col in cols if col[-3:] in list_tr\
-#                         and 'Placing' in col\
-#                         and ('Score range' in col\
-#                         or 'DistanceMeterAsStr' in col)]
+emb_delta_max_opp_cols = [col for col in cols if '_delta_max' in col]
+emb_delta_min_opp_cols = [col for col in cols if '_delta_min' in col]
+emb_delta_mean_opp_cols = [col for col in cols if '_delta_mean' in col]
+emb_mean_opp_cols = [col for col in cols if '_mean' in col]
+emb_max_opp_cols = [col for col in cols if '_max' in col]
+emb_min_opp_cols = [col for col in cols if '_min' in col]
+
+
+
+# print(f"Number of embedding columns: {len(embedding_cols)}")
+# print(f"Number of numeric columns: {len(numeric_cols)}")
+# print(f"Number of emb_delta_opp columns: {len(emb_delta_opp_cols)}")
+# print(f"Number of emb_mean_opp columns: {len(emb_mean_opp_cols)}")
+# print(f"Number of emb_max_opp columns: {len(emb_max_opp_cols)}")
+# print(f"Number of emb_min_opp columns: {len(emb_min_opp_cols)}")
+
+
 
 best_iteration = [0, 0, 0, 0, 0]
 best_features = []
 for i in range(0, 1):
 
+    embedding_cols_rand = []
     embedding_cols_rand = random.sample(embedding_cols, 10)
     numeric_cols_rand = []
-    # numeric_cols_rand = random.sample(numeric_cols, 6)
-    features = set(keep_cols + trailing_avg_cols + embedding_cols_rand + numeric_cols_rand)
+    numeric_cols_rand = random.sample(numeric_cols, 10)
+    
+    emb_delta_max_opp_cols_rand = random.sample(emb_delta_max_opp_cols, 50)
+    emb_delta_min_opp_cols_rand = random.sample(emb_delta_min_opp_cols, 50)
+    emb_delta_mean_opp_cols_rand = random.sample(emb_delta_mean_opp_cols, 10)
+    emb_mean_opp_cols_rand = random.sample(emb_mean_opp_cols, 10)
+    emb_max_opp_cols_rand = random.sample(emb_max_opp_cols, 50)
+    emb_min_opp_cols_rand = random.sample(emb_min_opp_cols, 50)
+
+    #  embedding_cols_rand + 
+    features = set(keep_cols
+                #    + numeric_cols_rand
+                   + embedding_cols_rand
+                #    + emb_delta_max_opp_cols_rand 
+                #    + emb_delta_min_opp_cols_rand 
+                #    + emb_delta_mean_opp_cols_rand 
+                   + emb_min_opp_cols_rand
+                #    + emb_mean_opp_cols_rand 
+                   + emb_max_opp_cols_rand
+                   )
     features = list(features)
+
     df_encoded = df_data[features].copy()
     df_train = df_encoded[df_encoded['Date'] < '2025-03-22'].copy()
     df_test = df_encoded[df_encoded['Date'] >= '2025-03-22'].copy()
@@ -192,8 +287,8 @@ for i in range(0, 1):
     # print(f'Recall: {recall:.2f}')
 
     print(f'iteration: {i}')
-    if precision + recall > best_iteration[0]:
-        best_iteration = [precision + recall, precision, recall, accuracy, mean_absolute_error]
+    if accuracy > best_iteration[0]:
+        best_iteration = [accuracy, precision, recall, accuracy, mean_absolute_error]
         best_features = features
         print(f'New best iteration: {i}')
         print(f'Precision: {precision:.2f}, Recall: {recall:.2f}, Accuracy: {accuracy:.2f}, MAE: {mean_absolute_error:.2f}')
@@ -202,3 +297,22 @@ for i in range(0, 1):
 
     plot_importance(model, importance_type='gain')
     plt.show()
+
+
+
+
+
+# trailing_avg_cols = []
+# # list_tr = ['TR1','TR2','TR3','TR4','TR5']
+# # trailing_avg_cols = [col for col in cols if col[-3:] in list_tr\
+# #                         and 'Placing' in col\
+# #                         and ('Score range' in col\
+# #                         or 'DistanceMeterAsStr' in col)]
+
+
+    # features = ['Date', 'RaceNumber', 'Horse', 'Placing', 'top_three','Horse', 'Dr.', 
+    #                      'J_Emb_47', 'J_Emb_4', 'H_Emb_29', 'Placing_TR8', 
+    #                      'J_Emb_21',  'H_Emb_3', 'J_Emb_48', 'Placing_TR10', 'H_Emb_28', 
+    #                      'J_Emb_13', 'H_Emb_10', 'J_Emb_28', 'Placing_TR2', 'H_Emb_22', 
+    #                      'Placing_TR1', 'H_Emb_7', 'Placing_TR9', 'J_Emb_8'                             
+    #                      ]
