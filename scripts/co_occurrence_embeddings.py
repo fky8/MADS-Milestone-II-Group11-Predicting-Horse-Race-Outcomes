@@ -299,8 +299,9 @@ if __name__ == "__main__":
     target_feature = 'Horse'
     comparison_feature = 'Horse'
     trailing_days = 365*7  # 6 months of trailing days
-    past_days = 7 * 365  # 7 years of weekly embeddings
+    past_days = 336  # 
     interval = 7 * 8  # 8 weeks of embeddings
+    # interval = 7 # 8 weeks of embeddings
 
     dates = ['2025-05-21', '2024-06-19', '2023-07-19',
              '2022-08-17', '2021-09-15', '2020-10-14', 
@@ -315,6 +316,7 @@ if __name__ == "__main__":
 
     processes = []
     for date, suffix, name in zip(dates, suffixes, process_names):
+        
         process = multiprocessing.Process(target=create_embeddings_sets, 
                                           kwargs={
                                               'end_date': date,

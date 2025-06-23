@@ -19,32 +19,52 @@ import os
 import pandas as pd
 from datetime import datetime, timedelta
 
-df = pd.read_csv('./data/Horse_Horse_Embeddings_180.csv')
-
-list_dates = df['Date End'].unique().tolist()[::-1]
-
-# print(list_dates)
-
-list_dfs = []
-for date in list_dates:  # Limiting to first 10 dates for demonstration
-    for i in range(0, 7):
-        # next_date = datetime.strptime(date, '%Y-%m-%d') - timedelta(days=i)
-        new_date = pd.to_datetime(date) + timedelta(days=i)
-        print(f"Processing date: {new_date.strftime('%Y-%m-%d')}")
-        print(f"Processing end date: {pd.to_datetime(date).strftime('%Y-%m-%d')}")
-        df_next = df[df['Date End'] == pd.to_datetime(date).strftime('%Y-%m-%d')]
-        df_next.drop(columns=['Date End', 'Date Begin'], inplace=True, errors='ignore')
-        df_next['Date'] = new_date
-        
-        list_dfs.append(df_next)
 
 
-df_flattened = pd.concat(list_dfs, ignore_index=True)
-df_flattened = df_flattened.sort_values(by=['Date'], ascending=True)
+def flatten_embedding_data(file_name: str ='Horse_Horse_Embeddings_2555_all',
+                           interval_days: int = 7,
+                           dims: int = 50,
+                           ) -> None:    
+    """
+    Flatten the embedding data to have a row for each day in the date range.
+    This is necessary to merge the embeddings
+    """
 
-for i in range(0, 50):
-    df_flattened.rename(columns={f'{str(i)}': f'H_Emb_{str(i)}'}, inplace=True, errors='ignore')
+    df = pd.read_csv(f"./data/{file_name}.csv")
+    list_dates = df['Date End'].unique().tolist()[::-1]
+    list_dfs = []
 
-script_dir = os.path.dirname(os.path.abspath(__file__)) 
-file_path = os.path.join(script_dir, f"../data/Horse_Horse_Embeddings_180_flat.csv")
-df_flattened.to_csv(file_path, index=False)
+    for date in list_dates:  
+        for i in range(0, interval_days):
+            df_next = df[df['Date End'] == pd.to_datetime(date).strftime('%Y-%m-%d')]
+            df_next.drop(columns=['Date End', 'Date Begin'], inplace=True, errors='ignore')
+            new_date = pd.to_datetime(date) + timedelta(days=i)
+            df_next['Date'] = new_date
+            list_dfs.append(df_next)
+
+    df_flattened = pd.concat(list_dfs, ignore_index=True)
+    df_flattened = df_flattened.sort_values(by=['Date'], ascending=True)
+
+
+    script_dir = os.path.dirname(os.path.abspath(__file__)) 
+    file_path = os.path.join(script_dir, f"../data/{file_name}_flat.csv")
+    df_flattened.to_csv(file_path, index=False)
+
+
+if __name__ == "__main__":
+    file_name = 'Jockey_Jockey_Embeddings_2555_all'
+
+    flatten_embedding_data(file_name=file_name,
+                           interval_days=7,
+                           dims=50)
+    
+    print(f"file saved to data/{file_name}_flat.csv")
+
+
+    # file_name = 'Horse_Horse_Embeddings_2555_all'
+
+    # flatten_embedding_data(file_name=file_name,
+    #                        interval_days=7*8,
+    #                        dims=50)
+    
+    # print(f"file saved to data/{file_name}_flat.csv")
