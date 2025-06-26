@@ -31,6 +31,8 @@ def flatten_embedding_data(file_name: str ='Horse_Horse_Embeddings_2555_all',
     """
 
     df = pd.read_csv(f"./data/{file_name}.csv")
+    df['Date Begin'] = pd.to_datetime(df['Date Begin'])
+    df['Date End'] = pd.to_datetime(df['Date End'])
     list_dates = df['Date End'].unique().tolist()[::-1]
     list_dfs = []
 
@@ -52,19 +54,19 @@ def flatten_embedding_data(file_name: str ='Horse_Horse_Embeddings_2555_all',
 
 
 if __name__ == "__main__":
-    file_name = 'Jockey_Jockey_Embeddings_2555_all'
+    file_name = 'Horse_Horse_Embeddings_2555_all'
 
     flatten_embedding_data(file_name=file_name,
-                           interval_days=7,
+                           interval_days=7*8,
                            dims=50)
     
     print(f"file saved to data/{file_name}_flat.csv")
 
 
-    # file_name = 'Horse_Horse_Embeddings_2555_all'
+    # file_name = 'Jockey_Jockey_Embeddings_2555_all'
 
     # flatten_embedding_data(file_name=file_name,
-    #                        interval_days=7*8,
+    #                        interval_days=7,
     #                        dims=50)
     
     # print(f"file saved to data/{file_name}_flat.csv")

@@ -9,3 +9,5 @@ html5lib
 scikit-learn
 xgboost
 matplotlib
+umap-learn
+db-sqlite3
