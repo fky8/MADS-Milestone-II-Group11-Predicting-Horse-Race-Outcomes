@@ -5,6 +5,11 @@ Jockey_Jockey_Embeddings_2555_all.csv
 ml_dataset_2019_2025.csv
 ml_dataset_2019_2025.csv.gz
 ml_dataset_2019_2025
+ml_dataset_2019_2025_390_train_30_test_all_with_competitor_joins.csv
+ml_dataset_2019_2025_390_train_30_test_all_with_competitor
+
+
+
 
 Horse_Horse_Embeddings_2555_all_flat
 Jockey_Jockey_Embeddings_2555_all_flat

@@ -10,3 +10,5 @@ scikit-learn
 tqdm
 xgboost
 matplotlib
+umap-learn
+db-sqlite3

@@ -1,5 +1,6 @@
 
 # .\.venv\Scripts\Activate.ps1
+from typing_extensions import List
 import numpy as np
 from collections import defaultdict
 from numpy._core.numeric import nan
@@ -10,6 +11,7 @@ import os
 import math
 import multiprocessing
 import time
+import matplotlib.pyplot as plt
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 scripts_dir = os.path.dirname(current_dir)
@@ -40,7 +42,6 @@ def get_race_matrix_dataset(start_date='2019-01-01', end_date='2025-12-31') -> p
     
 
     return df_filtered[(df_filtered['Date'] >= start_date) & (df_filtered['Date'] <= end_date)]
-
 
 def create_co_occurrence_matrix(target_feature: str ='Horse', 
                                 comparison_feature: str ='Horse',
@@ -92,11 +93,14 @@ def create_co_occurrence_matrix(target_feature: str ='Horse',
                             # the current placing for the comparison and target
                             c_plc = comparison[5]
                             c_avg = comparison[4]
-                            comp = (c_avg+c_plc)/2.0 if math.isnan(c_avg) == False and c_avg != 0 else c_plc                        
+                            comp = c_avg + c_plc/(tr + 1.0) if math.isnan(c_avg)\
+                                  == False and c_avg != 0 else c_plc                        
                             t_plc = target[5]
                             t_avg = target[4]
-                            tgt= (t_avg+t_plc)/2.0 if math.isnan(t_avg) == False and t_avg != 0 else t_plc
+                            tgt= t_avg + t_plc/(tr + 1.0) if math.isnan(t_avg)\
+                                  == False and t_avg != 0 else t_plc
                         else:
+                            # get the placing for the comparison and target
                             comp = comparison[5]
                             tgt = target[5]
 
@@ -108,15 +112,14 @@ def create_co_occurrence_matrix(target_feature: str ='Horse',
     
     return dict_co_occurrences
 
-
-
 def create_embeddings(dict_co_occurrence: defaultdict[any, float] = None,
                       dims: int = 50, 
                       l_rate: float = 0.01, 
                       epochs: int = 1000
                       ) -> dict[any, np.ndarray]:
     """
-    Creates embeddings resembling GloVe based on the co-occurrence matrix.
+    Creates embeddings resembling GloVe embeddings based on the 
+    co-occurrence matrix.
     """
     
     targets = set([])
@@ -165,10 +168,11 @@ def create_embeddings(dict_co_occurrence: defaultdict[any, float] = None,
         else:
             no_improvement_count = 0
 
-    return best_embedding
+    return best_embedding, best_loss
 
 
     # number_of_trailing_days = 7 # 
+
 def create_embeddings_sets(end_date: str = '2025-05-21',
                            past_days: int = 1967, 
                            trailing_days: int = 180,
@@ -244,10 +248,10 @@ def create_embeddings_sets(end_date: str = '2025-05-21',
                                                 df_race_dataset=df_rd,
                                                 placing_feature=placing_feature)
 
-            embedding = create_embeddings(dict_co_occurrence=dict_co,
-                                        dims=dims, 
-                                        l_rate=l_rate, 
-                                        epochs=epochs)
+            embedding, best_loss = create_embeddings(dict_co_occurrence=dict_co,
+                                                        dims=dims, 
+                                                        l_rate=l_rate, 
+                                                        epochs=epochs)
             
             df_embedding = pd.DataFrame.from_dict(embedding, orient='index').reset_index()
             df_embedding.rename(columns={'index': 'Target Feature'}, inplace=True)
@@ -271,6 +275,99 @@ def create_embeddings_sets(end_date: str = '2025-05-21',
     print("Process ended: ", end_time.now().strftime('%Y-%m-%d %H:%M:%S'), "Elapsed Minutes: ", end_time - start_time)
     sys.stdout.flush()
 
+def embedding_sensitivity_test(end_date: str = '2025-05-21', 
+                                trailing_days_ls: list[int] = [180],
+                                target_feature: str = 'Horse',
+                                comparison_feature: str = 'Horse',
+                                placing_feature: str = 'Placing',                           
+                                dims_ls: List[int] = [50], 
+                                l_rate_ls: List[float] = [0.01], 
+                                epochs: int = 1000                                                
+                                ) -> None:
+
+    results = []
+    initial_end_date = end_date
+    for trailing_days in trailing_days_ls:
+
+        end_date = datetime.strptime(initial_end_date, '%Y-%m-%d')
+        start_date = end_date - timedelta(days=trailing_days) 
+
+        df_rd = get_race_matrix_dataset(start_date=str(start_date.strftime('%Y-%m-%d')), 
+                                        end_date=str(end_date.strftime('%Y-%m-%d')))
+
+        dict_co = create_co_occurrence_matrix(target_feature=target_feature, 
+                                            comparison_feature=comparison_feature, 
+                                            df_race_dataset=df_rd,
+                                            placing_feature=placing_feature)
+
+        for dims in dims_ls:
+            for l_rate in l_rate_ls:
+
+                embedding, best_loss = create_embeddings(dict_co_occurrence=dict_co,
+                                            dims=dims, 
+                                            l_rate=l_rate, 
+                                            epochs=epochs)
+
+                results.append({
+                    'days': trailing_days,
+                    'rows': len(df_rd),
+                    'best_loss': best_loss,
+                    'dims': dims,
+                    'l_rate': l_rate
+                })
+
+    df_results = pd.DataFrame(results)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = f"../data/{target_feature}_glove_embedding_sensitivity_test_dims.csv"
+    file_path_joined = os.path.join(script_dir, file_path)
+    df_results.to_csv(file_path_joined, index=False)
+
+def embeddings_sensitivity_graph() -> None:
+
+    """
+    Graphs the sensitivity of the GloVe embedding parameters
+    """
+
+    df_sensitivity = pd.read_csv('./data/Jockey_glove_embedding_sensitivity_test_all.csv')
+
+
+    df_dims = df_sensitivity[df_sensitivity['parameter'] == 'dims']
+    df_lr = df_sensitivity[df_sensitivity['parameter'] == 'lr']
+    df_rows = df_sensitivity[df_sensitivity['parameter'] == 'rows']
+
+    dim_loss = df_dims['best_loss'].unique().tolist()
+    lr_loss = df_lr['best_loss'].unique().tolist()
+    rows_loss = df_rows['best_loss'].unique().tolist()
+
+
+    dim_values = df_dims['dims'].unique().tolist()
+    lr_values = df_lr['l_rate'].unique().tolist()
+    rows_values = df_rows['rows'].unique().tolist()
+
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(dim_values, dim_loss, marker='o', linestyle='-')
+    plt.title('GloVe Jockey Hyperparameter Sensitivity: dims vs. Loss')
+    plt.xlabel('Dimensions')
+    plt.ylabel('Loss')
+    plt.grid(True)
+    plt.show()
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(lr_values, lr_loss, marker='o', linestyle='-')
+    plt.title('GloVe Jockey Hyperparameter Sensitivity: l_rate vs. Loss')
+    plt.xlabel('Learning Rate')
+    plt.ylabel('Loss')
+    plt.grid(True)
+    plt.show()    
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(rows_values, rows_loss, marker='o', linestyle='-')
+    plt.title('GloVe Jockey Hyperparameter Sensitivity: rows vs. Loss')
+    plt.xlabel('Rows')
+    plt.ylabel('Loss')
+    plt.grid(True)
+    plt.show()
 
 def join_all_emb_files(target_feature: str,
                       comparison_feature: str,
@@ -291,11 +388,7 @@ def join_all_emb_files(target_feature: str,
     file_path_joined = os.path.join(script_dir, file_path)
     df_embeddings_all.to_csv(file_path_joined, index=False)
 
-
-
-if __name__ == "__main__":
-    # 1967
-
+def create_embeddings_sets_multi_threaded():
     target_feature = 'Horse'
     comparison_feature = 'Horse'
     trailing_days = 365*7  # 6 months of trailing days
@@ -345,15 +438,19 @@ if __name__ == "__main__":
                       sufsfixes=suffixes)
 
 
+if __name__ == "__main__":
+    # 1967
+    # create_embeddings_sets_multi_threaded()
 
-
-
-
-# 2024619	6/19/2024
-# 2023719	7/19/2023
-# 2022817	8/17/2022
-# 2021915	9/15/2021
-# 20201014	10/14/2020
-# 20191113	11/13/2019
-# 20181212	12/12/2018
-
+    # embedding_sensitivity_test(end_date = '2025-05-21', 
+    #                             trailing_days_ls = [365*7],
+    #                             target_feature = 'Jockey',
+    #                             comparison_feature = 'Jockey',
+    #                             placing_feature = 'Placing',                           
+    #                             dims_ls = [10, 25, 50, 75, 100, 125, 150], 
+    #                             # l_rate  = [0.01, 0.005, 0.001, 0.0001],
+    #                             l_rate_ls = [0.01],                                 
+    #                             epochs = 1000                                                
+    #                             )
+    
+    embeddings_sensitivity_graph()
